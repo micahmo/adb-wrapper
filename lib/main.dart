@@ -58,11 +58,15 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final TextEditingController _pairingCodeController = TextEditingController();
   final TextEditingController _pairingPortController = TextEditingController();
   final TextEditingController _scrcpyPathController = TextEditingController();
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalScrollController = ScrollController();
 
   final AdbHelper _adbHelper = AdbHelper();
   List<String> _devices = <String>[];
   bool _areDevicesLoading = true;
   String? _errorMessage;
+
+  String _scrcpyOutput = "";
 
   void _loadConfig() async {
     final Map<String, dynamic> config = await ConfigHelper.readConfig();
@@ -201,7 +205,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 });
                                                 await _loadConnectedDevices();
                                               } else if (result.startsWith('scrcpy')) {
-                                                final ProcessResult processResult = await Process.run(
+                                                _scrcpyOutput = "";
+                                                final Process process = await Process.start(
                                                   _scrcpyPathController.text,
                                                   <String>[
                                                     '--serial=${_ipController.text}:${_portController.text}',
@@ -209,7 +214,16 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                   ],
                                                   runInShell: true,
                                                 );
-                                                debugPrint(processResult.exitCode.toString());
+                                                process.stdout.transform(const SystemEncoding().decoder).listen((String data) {
+                                                  setState(() {
+                                                    _scrcpyOutput += data;
+                                                  });
+                                                });
+                                                process.stderr.transform(const SystemEncoding().decoder).listen((String data) {
+                                                  setState(() {
+                                                    _scrcpyOutput += data;
+                                                  });
+                                                });
                                               }
                                             },
                                             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -235,6 +249,54 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     ],
                   ),
                 ),
+                if (_scrcpyOutput.isNotEmpty)
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 250),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              const SizedBox(height: 25),
+                              Text(
+                                'scrcpy Output',
+                                style: Theme.of(context).textTheme.headlineSmall,
+                              ),
+                              const SizedBox(height: 25),
+                              Container(
+                                padding: const EdgeInsets.all(8.0),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.blue),
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
+                                child: Scrollbar(
+                                  thumbVisibility: true,
+                                  controller: _horizontalScrollController,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    controller: _horizontalScrollController,
+                                    child: Scrollbar(
+                                      thumbVisibility: true,
+                                      controller: _verticalScrollController,
+                                      child: SingleChildScrollView(
+                                        scrollDirection: Axis.vertical,
+                                        controller: _verticalScrollController,
+                                        child: SelectableText(
+                                          _scrcpyOutput,
+                                          style: const TextStyle(fontFamily: 'Consolas', fontSize: 14.0),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 25),
                 Text(
                   'Add Device',
