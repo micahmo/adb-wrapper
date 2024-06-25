@@ -7,23 +7,20 @@ import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
 
-  // Uncomment this code to use window manager in the future
-  // But be aware that it does funky stuff with the title bar
+  WindowOptions windowOptions = const WindowOptions(
+    size: Size(800, 950),
+    center: true,
+    skipTaskbar: false,
+    title: 'adb wrapper',
+  );
 
-  // await windowManager.ensureInitialized();
-
-  // WindowOptions windowOptions = const WindowOptions(
-  //   size: Size(800, 600),
-  //   center: true,
-  //   backgroundColor: Colors.transparent,
-  //   titleBarStyle: TitleBarStyle.normal,
-  // );
-
-  // windowManager.waitUntilReadyToShow(windowOptions, () async {
-  //   await windowManager.show();
-  //   await windowManager.focus();
-  // });
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.setBrightness(Brightness.light);
+    await windowManager.show();
+    await windowManager.focus();
+  });
 
   runApp(const MyApp());
 }
