@@ -111,7 +111,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     });
   }
 
-  Future<void> _loadConnectedDevices() async {
+  Future<void> _loadConnectedDevices({bool overrideError = false}) async {
     setState(() {
       _areDevicesLoading = true;
     });
@@ -120,7 +120,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       final Map<String, dynamic> result = await _adbHelper.getConnectedDevices();
       setState(() {
         _devices = result['devices'] as List<Map<String, String>>;
-        _errorMessage = result['error'] as String?;
+        if (overrideError) {
+          _errorMessage = result['error'] as String?;
+        }
         _areDevicesLoading = false;
       });
     } catch (e) {
@@ -143,7 +145,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     _pairingPortController.addListener(_queueConfigSave);
     _scrcpyPathController.addListener(_queueConfigSave);
     windowManager.addListener(this);
-    _loadConnectedDevices();
+    _loadConnectedDevices(overrideError: true);
   }
 
   @override
@@ -200,7 +202,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const Spacer(),
-                    IconButton(onPressed: () async => await _loadConnectedDevices(), icon: const Icon(Icons.refresh_rounded)),
+                    IconButton(
+                      onPressed: () async => await _loadConnectedDevices(overrideError: true),
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 25),
