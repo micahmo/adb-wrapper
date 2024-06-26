@@ -83,11 +83,13 @@ class AdbHelper {
       if (exitCode == 0) {
         return <String, dynamic>{
           'success': true,
+          'output': stdoutBuffer.toString(),
         };
       } else {
         return <String, dynamic>{
           'success': false,
           'error': stderrBuffer.isEmpty ? stdoutBuffer.toString() : stderrBuffer.toString(),
+          'output': stdoutBuffer.toString(),
         };
       }
     } catch (e) {
@@ -111,11 +113,13 @@ class AdbHelper {
         return <String, dynamic>{
           'success': false,
           'error': 'Failed to disconnect device: ${result.stderr}',
+          'output': result.stdout,
         };
       }
 
       return <String, dynamic>{
         'success': true,
+        'output': result.stdout,
       };
     } catch (e) {
       return <String, dynamic>{
@@ -138,11 +142,13 @@ class AdbHelper {
         return <String, dynamic>{
           'success': false,
           'error': 'Failed to connect to device: ${result.stderr}',
+          'output': result.stdout,
         };
       }
 
       return <String, dynamic>{
         'success': true,
+        'output': result.stdout,
       };
     } catch (e) {
       return <String, dynamic>{

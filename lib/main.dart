@@ -63,6 +63,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   List<Map<String, String>> _devices = <Map<String, String>>[];
   bool _areDevicesLoading = true;
   String? _errorMessage;
+  String? _outputMessage;
 
   String _scrcopyOutput = "";
   bool _hideScrcopyOutput = false;
@@ -122,11 +123,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         _devices = result['devices'] as List<Map<String, String>>;
         if (overrideError) {
           _errorMessage = result['error'] as String?;
+          _outputMessage = result['output'] as String?;
         }
         _areDevicesLoading = false;
       });
     } catch (e) {
       _errorMessage = e.toString();
+      _outputMessage = null;
       _areDevicesLoading = false;
     } finally {
       setState(() {
@@ -236,7 +239,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                               if (result == 'disconnect') {
                                                 final Map<String, dynamic> result = await _adbHelper.disconnectDevice(_devices[index]['identifier']!);
                                                 setState(() {
-                                                  _errorMessage = result['error'];
+                                                  _errorMessage = result['error'] as String?;
+                                                  _outputMessage = result['output'] as String?;
                                                 });
                                                 await _loadConnectedDevices();
                                               } else if (result.startsWith('scrcpy')) {
@@ -396,7 +400,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       onPressed: () async {
                         final Map<String, dynamic> result = await _adbHelper.pairDevice(_ipController.text, _pairingPortController.text, _pairingCodeController.text);
                         setState(() {
-                          _errorMessage = result['error'];
+                          _errorMessage = result['error'] as String?;
+                          _outputMessage = result['output'] as String?;
                         });
 
                         await _loadConnectedDevices();
@@ -408,7 +413,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       onPressed: () async {
                         final Map<String, dynamic> result = await _adbHelper.connectDevice(_ipController.text, _portController.text);
                         setState(() {
-                          _errorMessage = result['error'];
+                          _errorMessage = result['error'] as String?;
+                          _outputMessage = result['output'] as String?;
                         });
 
                         await _loadConnectedDevices();
@@ -417,12 +423,20 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     ),
                   ],
                 ),
-                const SizedBox(height: 25),
-                if (_errorMessage?.isNotEmpty == true)
+                if (_errorMessage?.isNotEmpty == true) ...<Widget>[
+                  const SizedBox(height: 25),
                   Text(
                     _errorMessage!,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.red, fontWeight: FontWeight.bold),
                   ),
+                ],
+                if (_outputMessage?.isNotEmpty == true) ...<Widget>[
+                  const SizedBox(height: 25),
+                  Text(
+                    _outputMessage!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.green, fontWeight: FontWeight.bold),
+                  ),
+                ],
                 const SizedBox(height: 25),
                 Text(
                   'Settings',
