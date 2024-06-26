@@ -220,7 +220,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 final Process process = await Process.start(
                                                   _scrcpyPathController.text,
                                                   <String>[
-                                                    '--serial=${_ipController.text}:${_portController.text}',
+                                                    '--serial=${_devices[index]}',
                                                     if (result.endsWith('noaudio')) '--no-audio',
                                                   ],
                                                   runInShell: true,
