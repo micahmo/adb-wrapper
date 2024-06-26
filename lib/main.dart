@@ -85,7 +85,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     });
   }
 
-  void _saveConfig() async {
+  Future<void> _saveConfig() async {
     final Rect bounds = await windowManager.getBounds();
 
     final Map<String, String> config = <String, String>{
@@ -102,12 +102,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     await ConfigHelper.writeConfig(config);
   }
 
-  void _onTextChanged() {
+  void _queueConfigSave() {
     if (_configSaveTimer?.isActive == true) {
       _configSaveTimer!.cancel();
     }
-    _configSaveTimer = Timer(const Duration(milliseconds: 500), () {
-      _saveConfig();
+    _configSaveTimer = Timer(const Duration(milliseconds: 500), () async {
+      await _saveConfig();
     });
   }
 
@@ -137,17 +137,17 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   void initState() {
     super.initState();
     _loadConfig();
-    _ipController.addListener(_onTextChanged);
-    _portController.addListener(_onTextChanged);
-    _pairingCodeController.addListener(_onTextChanged);
-    _pairingPortController.addListener(_onTextChanged);
-    _scrcpyPathController.addListener(_onTextChanged);
+    _ipController.addListener(_queueConfigSave);
+    _portController.addListener(_queueConfigSave);
+    _pairingCodeController.addListener(_queueConfigSave);
+    _pairingPortController.addListener(_queueConfigSave);
+    _scrcpyPathController.addListener(_queueConfigSave);
     windowManager.addListener(this);
     _loadConnectedDevices();
   }
 
   @override
-  void dispose() {
+  void dispose() async {
     _configSaveTimer?.cancel();
     _saveConfig();
     _ipController.dispose();
@@ -160,8 +160,20 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   }
 
   @override
+  void onWindowResized() {
+    super.onWindowResized();
+    _queueConfigSave();
+  }
+
+  @override
+  void onWindowMoved() {
+    super.onWindowMoved();
+    _queueConfigSave();
+  }
+
+  @override
   void onWindowClose() async {
-    _saveConfig();
+    await _saveConfig();
     await windowManager.destroy();
   }
 
