@@ -60,7 +60,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final ScrollController _horizontalScrollController = ScrollController();
 
   final AdbHelper _adbHelper = AdbHelper();
-  List<String> _devices = <String>[];
+  List<Map<String, String>> _devices = <Map<String, String>>[];
   bool _areDevicesLoading = true;
   String? _errorMessage;
 
@@ -118,7 +118,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     try {
       final Map<String, dynamic> result = await _adbHelper.getConnectedDevices();
       setState(() {
-        _devices = result['devices'] as List<String>;
+        _devices = result['devices'] as List<Map<String, String>>;
         _errorMessage = result['error'] as String?;
         _areDevicesLoading = false;
       });
@@ -206,11 +206,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                           borderRadius: BorderRadius.circular(10),
                                         ),
                                         child: ListTile(
-                                          title: Text(_devices[index]),
+                                          title: Text("${_devices[index]['identifier']!} (${_devices[index]['model'] ?? ''})"),
                                           trailing: PopupMenuButton<String>(
                                             onSelected: (String result) async {
                                               if (result == 'disconnect') {
-                                                final Map<String, dynamic> result = await _adbHelper.disconnectDevice(_devices[index]);
+                                                final Map<String, dynamic> result = await _adbHelper.disconnectDevice(_devices[index]['identifier']!);
                                                 setState(() {
                                                   _errorMessage = result['error'];
                                                 });
@@ -220,7 +220,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 final Process process = await Process.start(
                                                   _scrcpyPathController.text,
                                                   <String>[
-                                                    '--serial=${_devices[index]}',
+                                                    '--serial=${_devices[index]['identifier']}',
                                                     if (result.endsWith('noaudio')) '--no-audio',
                                                   ],
                                                   runInShell: true,

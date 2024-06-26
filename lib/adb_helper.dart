@@ -1,10 +1,10 @@
 import 'dart:io';
 
 class AdbHelper {
-  /// Runs the `adb devices` command and returns a list of connected devices.
+  /// Runs the `adb devices -l` command and returns a list of connected devices with detailed information.
   Future<Map<String, dynamic>> getConnectedDevices() async {
     try {
-      final ProcessResult result = await Process.run('adb', <String>['devices']);
+      final ProcessResult result = await Process.run('adb', <String>['devices', '-l']);
 
       if (result.exitCode != 0) {
         return <String, dynamic>{
@@ -14,7 +14,7 @@ class AdbHelper {
       }
 
       final String output = result.stdout as String;
-      final List<String> devices = _parseDevices(output);
+      final List<Map<String, String>> devices = _parseDevices(output);
       return <String, dynamic>{
         'success': true,
         'devices': devices,
@@ -27,15 +27,28 @@ class AdbHelper {
     }
   }
 
-  /// Parses the output of `adb devices` command and extracts the list of devices.
-  List<String> _parseDevices(String output) {
+  /// Parses the output of `adb devices -l` command and extracts the list of devices with detailed information.
+  List<Map<String, String>> _parseDevices(String output) {
     final List<String> lines = output.split('\n');
-    final List<String> devices = <String>[];
+    final List<Map<String, String>> devices = <Map<String, String>>[];
 
-    for (String line in lines) {
-      if (line.contains('\tdevice')) {
-        final String device = line.split('\t')[0];
-        devices.add(device);
+    for (String line in lines.skip(1)) {
+      if (line != "" && line.contains('device')) {
+        final List<String> parts = line.split(RegExp(r'\s+'));
+        final Map<String, String> deviceInfo = <String, String>{};
+
+        // The first part is always the device identifier
+        deviceInfo['identifier'] = parts[0];
+
+        // Iterate over the remaining parts and parse key-value pairs
+        for (int i = 1; i < parts.length; i++) {
+          final List<String> keyValue = parts[i].split(':');
+          if (keyValue.length == 2) {
+            deviceInfo[keyValue[0]] = keyValue[1];
+          }
+        }
+
+        devices.add(deviceInfo);
       }
     }
 
