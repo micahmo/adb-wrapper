@@ -65,8 +65,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   String? _errorMessage;
   String? _outputMessage;
 
-  String _scrcopyOutput = "";
-  bool _hideScrcopyOutput = false;
+  String _scrcpyOutput = "";
+  bool _hideScrcpyOutput = false;
 
   void _loadConfig() async {
     final Map<String, dynamic> config = await ConfigHelper.readConfig();
@@ -244,7 +244,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 });
                                                 await _loadConnectedDevices();
                                               } else if (result.startsWith('scrcpy')) {
-                                                _scrcopyOutput = "";
+                                                _scrcpyOutput = "";
                                                 final Process process = await Process.start(
                                                   _scrcpyPathController.text,
                                                   <String>[
@@ -255,14 +255,14 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 );
                                                 process.stdout.transform(const SystemEncoding().decoder).listen((String data) {
                                                   setState(() {
-                                                    _hideScrcopyOutput = false;
-                                                    _scrcopyOutput += data;
+                                                    _hideScrcpyOutput = false;
+                                                    _scrcpyOutput += data;
                                                   });
                                                 });
                                                 process.stderr.transform(const SystemEncoding().decoder).listen((String data) {
                                                   setState(() {
-                                                    _hideScrcopyOutput = false;
-                                                    _scrcopyOutput += data;
+                                                    _hideScrcpyOutput = false;
+                                                    _scrcpyOutput += data;
                                                   });
                                                 });
                                               }
@@ -290,7 +290,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     ],
                   ),
                 ),
-                if (_scrcopyOutput.isNotEmpty)
+                if (_scrcpyOutput.isNotEmpty)
                   Row(
                     children: <Widget>[
                       Expanded(
@@ -308,16 +308,16 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                 IconButton(
                                   onPressed: () {
                                     setState(() {
-                                      _hideScrcopyOutput = !_hideScrcopyOutput;
+                                      _hideScrcpyOutput = !_hideScrcpyOutput;
                                     });
                                   },
-                                  icon: _hideScrcopyOutput ? const Icon(Icons.keyboard_arrow_down_rounded) : const Icon(Icons.keyboard_arrow_up_rounded),
+                                  icon: _hideScrcpyOutput ? const Icon(Icons.keyboard_arrow_down_rounded) : const Icon(Icons.keyboard_arrow_up_rounded),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 25),
                             Visibility(
-                              visible: !_hideScrcopyOutput,
+                              visible: !_hideScrcpyOutput,
                               child: Container(
                                 padding: const EdgeInsets.all(8.0),
                                 decoration: BoxDecoration(
@@ -337,7 +337,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                         scrollDirection: Axis.vertical,
                                         controller: _verticalScrollController,
                                         child: SelectableText(
-                                          _scrcopyOutput,
+                                          _scrcpyOutput,
                                           style: const TextStyle(fontFamily: 'Consolas', fontSize: 14.0),
                                         ),
                                       ),
