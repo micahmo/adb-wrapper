@@ -10,8 +10,6 @@ void main() async {
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = const WindowOptions(
-    size: Size(800, 950),
-    center: true,
     skipTaskbar: false,
     title: 'adb wrapper',
   );
@@ -76,16 +74,29 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       _pairingCodeController.text = config['pairing_code'] ?? '';
       _pairingPortController.text = config['pairing_port'] ?? '';
       _scrcpyPathController.text = config['scrcpy_path'] ?? '';
+
+      final double left = double.tryParse(config['window_left']) ?? 200.0;
+      final double top = double.tryParse(config['window_top']) ?? 30.0;
+      final double width = double.tryParse(config['window_width']) ?? 800.0;
+      final double height = double.tryParse(config['window_height']) ?? 950.0;
+
+      windowManager.setBounds(Rect.fromLTWH(left, top, width, height));
     });
   }
 
   void _saveConfig() async {
+    final Rect bounds = await windowManager.getBounds();
+
     final Map<String, String> config = <String, String>{
       'device_ip': _ipController.text,
       'port': _portController.text,
       'pairing_code': _pairingCodeController.text,
       'pairing_port': _pairingPortController.text,
       'scrcpy_path': _scrcpyPathController.text,
+      'window_left': bounds.left.toString(),
+      'window_top': bounds.top.toString(),
+      'window_width': bounds.width.toString(),
+      'window_height': bounds.height.toString(),
     };
     await ConfigHelper.writeConfig(config);
   }
