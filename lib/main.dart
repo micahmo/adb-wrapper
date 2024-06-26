@@ -64,7 +64,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   bool _areDevicesLoading = true;
   String? _errorMessage;
 
-  String _scrcpyOutput = "";
+  String _scrcopyOutput = "";
   bool _hideScrcopyOutput = false;
 
   void _loadConfig() async {
@@ -223,7 +223,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 });
                                                 await _loadConnectedDevices();
                                               } else if (result.startsWith('scrcpy')) {
-                                                _scrcpyOutput = "";
+                                                _scrcopyOutput = "";
                                                 final Process process = await Process.start(
                                                   _scrcpyPathController.text,
                                                   <String>[
@@ -234,12 +234,14 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 );
                                                 process.stdout.transform(const SystemEncoding().decoder).listen((String data) {
                                                   setState(() {
-                                                    _scrcpyOutput += data;
+                                                    _hideScrcopyOutput = false;
+                                                    _scrcopyOutput += data;
                                                   });
                                                 });
                                                 process.stderr.transform(const SystemEncoding().decoder).listen((String data) {
                                                   setState(() {
-                                                    _scrcpyOutput += data;
+                                                    _hideScrcopyOutput = false;
+                                                    _scrcopyOutput += data;
                                                   });
                                                 });
                                               }
@@ -267,7 +269,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     ],
                   ),
                 ),
-                if (_scrcpyOutput.isNotEmpty)
+                if (_scrcopyOutput.isNotEmpty)
                   Row(
                     children: <Widget>[
                       Expanded(
@@ -314,7 +316,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                         scrollDirection: Axis.vertical,
                                         controller: _verticalScrollController,
                                         child: SelectableText(
-                                          _scrcpyOutput,
+                                          _scrcopyOutput,
                                           style: const TextStyle(fontFamily: 'Consolas', fontSize: 14.0),
                                         ),
                                       ),
