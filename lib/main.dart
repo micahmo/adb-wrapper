@@ -65,6 +65,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   String? _errorMessage;
 
   String _scrcpyOutput = "";
+  bool _hideScrcopyOutput = false;
 
   void _loadConfig() async {
     final Map<String, dynamic> config = await ConfigHelper.readConfig();
@@ -180,9 +181,15 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const SizedBox(height: 25),
-                Text(
-                  'Connected Devices',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                Row(
+                  children: <Widget>[
+                    Text(
+                      'Connected Devices',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const Spacer(),
+                    IconButton(onPressed: () async => await _loadConnectedDevices(), icon: const Icon(Icons.refresh_rounded)),
+                  ],
                 ),
                 const SizedBox(height: 25),
                 AnimatedSize(
@@ -261,21 +268,34 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                   ),
                 ),
                 if (_scrcpyOutput.isNotEmpty)
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 250),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              const SizedBox(height: 25),
-                              Text(
-                                'scrcpy Output',
-                                style: Theme.of(context).textTheme.headlineSmall,
-                              ),
-                              const SizedBox(height: 25),
-                              Container(
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const SizedBox(height: 25),
+                            Row(
+                              children: <Widget>[
+                                Text(
+                                  'scrcpy Output',
+                                  style: Theme.of(context).textTheme.headlineSmall,
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _hideScrcopyOutput = !_hideScrcopyOutput;
+                                    });
+                                  },
+                                  icon: _hideScrcopyOutput ? const Icon(Icons.keyboard_arrow_down_rounded) : const Icon(Icons.keyboard_arrow_up_rounded),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 25),
+                            Visibility(
+                              visible: !_hideScrcopyOutput,
+                              child: Container(
                                 padding: const EdgeInsets.all(8.0),
                                 decoration: BoxDecoration(
                                   border: Border.all(color: Colors.blue),
@@ -302,11 +322,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 const SizedBox(height: 25),
                 Text(
