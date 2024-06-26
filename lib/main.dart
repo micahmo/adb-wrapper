@@ -56,8 +56,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final TextEditingController _pairingCodeController = TextEditingController();
   final TextEditingController _pairingPortController = TextEditingController();
   final TextEditingController _scrcpyPathController = TextEditingController();
-  final ScrollController _verticalScrollController = ScrollController();
-  final ScrollController _horizontalScrollController = ScrollController();
+  final ScrollController _scrcpyOutputVerticalScrollController = ScrollController();
+  final ScrollController _scrcpyOutputhorizontalScrollController = ScrollController();
+  final ScrollController _adbOutputverticalScrollController = ScrollController();
+  final ScrollController _adbOutputhorizontalScrollController = ScrollController();
 
   final AdbHelper _adbHelper = AdbHelper();
   List<Map<String, String>> _devices = <Map<String, String>>[];
@@ -136,8 +138,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     setState(() {
       message = message?.trim() ?? '';
       if (message!.isNotEmpty) {
-        if (_adbOutput.isNotEmpty && !_adbOutput.endsWith('\n')) _adbOutput += '\n\n';
+        if (_adbOutput.isNotEmpty && !_adbOutput.endsWith('\n\n')) _adbOutput += '\n';
         _adbOutput += message!;
+        if (!_adbOutput.endsWith('\n')) _adbOutput += '\n';
       }
     });
   }
@@ -429,16 +432,16 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                         ),
                                         child: Scrollbar(
                                           thumbVisibility: true,
-                                          controller: _horizontalScrollController,
+                                          controller: _scrcpyOutputhorizontalScrollController,
                                           child: SingleChildScrollView(
                                             scrollDirection: Axis.horizontal,
-                                            controller: _horizontalScrollController,
+                                            controller: _scrcpyOutputhorizontalScrollController,
                                             child: Scrollbar(
                                               thumbVisibility: true,
-                                              controller: _verticalScrollController,
+                                              controller: _scrcpyOutputVerticalScrollController,
                                               child: SingleChildScrollView(
                                                 scrollDirection: Axis.vertical,
-                                                controller: _verticalScrollController,
+                                                controller: _scrcpyOutputVerticalScrollController,
                                                 child: SelectableText(
                                                   _scrcpyOutput,
                                                   style: const TextStyle(fontFamily: 'Consolas', fontSize: 14.0),
@@ -470,16 +473,16 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                         ),
                                         child: Scrollbar(
                                           thumbVisibility: true,
-                                          controller: _horizontalScrollController,
+                                          controller: _adbOutputhorizontalScrollController,
                                           child: SingleChildScrollView(
                                             scrollDirection: Axis.horizontal,
-                                            controller: _horizontalScrollController,
+                                            controller: _adbOutputhorizontalScrollController,
                                             child: Scrollbar(
                                               thumbVisibility: true,
-                                              controller: _verticalScrollController,
+                                              controller: _adbOutputverticalScrollController,
                                               child: SingleChildScrollView(
                                                 scrollDirection: Axis.vertical,
-                                                controller: _verticalScrollController,
+                                                controller: _adbOutputverticalScrollController,
                                                 child: SelectableText(
                                                   _adbOutput,
                                                   style: const TextStyle(fontFamily: 'Consolas', fontSize: 14.0),
