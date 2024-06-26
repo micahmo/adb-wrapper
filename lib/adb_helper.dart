@@ -10,6 +10,7 @@ class AdbHelper {
         return <String, dynamic>{
           'success': false,
           'error': 'Failed to get connected devices: ${result.stderr}',
+          'output': result.stdout,
         };
       }
 
@@ -18,6 +19,8 @@ class AdbHelper {
       return <String, dynamic>{
         'success': true,
         'devices': devices,
+        'error': result.stderr,
+        'output': result.stdout,
       };
     } catch (e) {
       return <String, dynamic>{
@@ -83,6 +86,7 @@ class AdbHelper {
       if (exitCode == 0) {
         return <String, dynamic>{
           'success': true,
+          'error': stderrBuffer.toString(),
           'output': stdoutBuffer.toString(),
         };
       } else {
@@ -119,6 +123,7 @@ class AdbHelper {
 
       return <String, dynamic>{
         'success': true,
+        'error': result.stderr,
         'output': result.stdout,
       };
     } catch (e) {
@@ -148,6 +153,7 @@ class AdbHelper {
 
       return <String, dynamic>{
         'success': true,
+        'error': result.stderr,
         'output': result.stdout,
       };
     } catch (e) {

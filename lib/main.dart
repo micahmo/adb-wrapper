@@ -62,11 +62,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final AdbHelper _adbHelper = AdbHelper();
   List<Map<String, String>> _devices = <Map<String, String>>[];
   bool _areDevicesLoading = true;
-  String? _errorMessage;
-  String? _outputMessage;
 
+  bool _hideOutput = false;
   String _scrcpyOutput = "";
-  bool _hideScrcpyOutput = false;
+  String _adbOutput = "";
 
   void _loadConfig() async {
     final Map<String, dynamic> config = await ConfigHelper.readConfig();
@@ -112,7 +111,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     });
   }
 
-  Future<void> _loadConnectedDevices({bool overrideError = false}) async {
+  Future<void> _loadConnectedDevices() async {
     setState(() {
       _areDevicesLoading = true;
     });
@@ -121,21 +120,26 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       final Map<String, dynamic> result = await _adbHelper.getConnectedDevices();
       setState(() {
         _devices = result['devices'] as List<Map<String, String>>;
-        if (overrideError) {
-          _errorMessage = result['error'] as String?;
-          _outputMessage = result['output'] as String?;
-        }
-        _areDevicesLoading = false;
+        _appendAdbOutput(result['error']);
+        _appendAdbOutput(result['output']);
       });
     } catch (e) {
-      _errorMessage = e.toString();
-      _outputMessage = null;
       _areDevicesLoading = false;
     } finally {
       setState(() {
         _areDevicesLoading = false;
       });
     }
+  }
+
+  void _appendAdbOutput(String? message) {
+    setState(() {
+      message = message?.trim() ?? '';
+      if (message!.isNotEmpty) {
+        if (_adbOutput.isNotEmpty && !_adbOutput.endsWith('\n')) _adbOutput += '\n\n';
+        _adbOutput += message!;
+      }
+    });
   }
 
   @override
@@ -148,7 +152,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     _pairingPortController.addListener(_queueConfigSave);
     _scrcpyPathController.addListener(_queueConfigSave);
     windowManager.addListener(this);
-    _loadConnectedDevices(overrideError: true);
+    _loadConnectedDevices();
   }
 
   @override
@@ -206,7 +210,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     ),
                     const Spacer(),
                     IconButton(
-                      onPressed: () async => await _loadConnectedDevices(overrideError: true),
+                      onPressed: () async => await _loadConnectedDevices(),
                       icon: const Icon(Icons.refresh_rounded),
                     ),
                   ],
@@ -239,8 +243,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                               if (result == 'disconnect') {
                                                 final Map<String, dynamic> result = await _adbHelper.disconnectDevice(_devices[index]['identifier']!);
                                                 setState(() {
-                                                  _errorMessage = result['error'] as String?;
-                                                  _outputMessage = result['output'] as String?;
+                                                  _appendAdbOutput(result['error']);
+                                                  _appendAdbOutput(result['output']);
                                                 });
                                                 await _loadConnectedDevices();
                                               } else if (result.startsWith('scrcpy')) {
@@ -255,13 +259,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 );
                                                 process.stdout.transform(const SystemEncoding().decoder).listen((String data) {
                                                   setState(() {
-                                                    _hideScrcpyOutput = false;
+                                                    _hideOutput = false;
                                                     _scrcpyOutput += data;
                                                   });
                                                 });
                                                 process.stderr.transform(const SystemEncoding().decoder).listen((String data) {
                                                   setState(() {
-                                                    _hideScrcpyOutput = false;
+                                                    _hideOutput = false;
                                                     _scrcpyOutput += data;
                                                   });
                                                 });
@@ -290,67 +294,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     ],
                   ),
                 ),
-                if (_scrcpyOutput.isNotEmpty)
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            const SizedBox(height: 25),
-                            Row(
-                              children: <Widget>[
-                                Text(
-                                  'scrcpy Output',
-                                  style: Theme.of(context).textTheme.headlineSmall,
-                                ),
-                                const Spacer(),
-                                IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _hideScrcpyOutput = !_hideScrcpyOutput;
-                                    });
-                                  },
-                                  icon: _hideScrcpyOutput ? const Icon(Icons.keyboard_arrow_down_rounded) : const Icon(Icons.keyboard_arrow_up_rounded),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 25),
-                            Visibility(
-                              visible: !_hideScrcpyOutput,
-                              child: Container(
-                                padding: const EdgeInsets.all(8.0),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.blue),
-                                  borderRadius: BorderRadius.circular(8.0),
-                                ),
-                                child: Scrollbar(
-                                  thumbVisibility: true,
-                                  controller: _horizontalScrollController,
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    controller: _horizontalScrollController,
-                                    child: Scrollbar(
-                                      thumbVisibility: true,
-                                      controller: _verticalScrollController,
-                                      child: SingleChildScrollView(
-                                        scrollDirection: Axis.vertical,
-                                        controller: _verticalScrollController,
-                                        child: SelectableText(
-                                          _scrcpyOutput,
-                                          style: const TextStyle(fontFamily: 'Consolas', fontSize: 14.0),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 const SizedBox(height: 25),
                 Text(
                   'Add Device',
@@ -400,8 +343,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       onPressed: () async {
                         final Map<String, dynamic> result = await _adbHelper.pairDevice(_ipController.text, _pairingPortController.text, _pairingCodeController.text);
                         setState(() {
-                          _errorMessage = result['error'] as String?;
-                          _outputMessage = result['output'] as String?;
+                          _appendAdbOutput(result['error']);
+                          _appendAdbOutput(result['output']);
                         });
 
                         await _loadConnectedDevices();
@@ -413,8 +356,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                       onPressed: () async {
                         final Map<String, dynamic> result = await _adbHelper.connectDevice(_ipController.text, _portController.text);
                         setState(() {
-                          _errorMessage = result['error'] as String?;
-                          _outputMessage = result['output'] as String?;
+                          _appendAdbOutput(result['error']);
+                          _appendAdbOutput(result['output']);
                         });
 
                         await _loadConnectedDevices();
@@ -423,20 +366,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     ),
                   ],
                 ),
-                if (_errorMessage?.isNotEmpty == true) ...<Widget>[
-                  const SizedBox(height: 25),
-                  Text(
-                    _errorMessage!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.red, fontWeight: FontWeight.bold),
-                  ),
-                ],
-                if (_outputMessage?.isNotEmpty == true) ...<Widget>[
-                  const SizedBox(height: 25),
-                  Text(
-                    _outputMessage!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.green, fontWeight: FontWeight.bold),
-                  ),
-                ],
                 const SizedBox(height: 25),
                 Text(
                   'Settings',
@@ -450,6 +379,126 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     labelText: 'scrcpy Path',
                   ),
                   controller: _scrcpyPathController,
+                ),
+                const SizedBox(height: 25),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const SizedBox(height: 25),
+                          Row(
+                            children: <Widget>[
+                              Text(
+                                'Output',
+                                style: Theme.of(context).textTheme.headlineSmall,
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _hideOutput = !_hideOutput;
+                                  });
+                                },
+                                icon: _hideOutput ? const Icon(Icons.keyboard_arrow_down_rounded) : const Icon(Icons.keyboard_arrow_up_rounded),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 25),
+                          Visibility(
+                            visible: !_hideOutput,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 2, bottom: 5),
+                                  child: Text(
+                                    'scrcpy Output',
+                                    style: Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                ),
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8.0),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Colors.blue),
+                                          borderRadius: BorderRadius.circular(8.0),
+                                        ),
+                                        child: Scrollbar(
+                                          thumbVisibility: true,
+                                          controller: _horizontalScrollController,
+                                          child: SingleChildScrollView(
+                                            scrollDirection: Axis.horizontal,
+                                            controller: _horizontalScrollController,
+                                            child: Scrollbar(
+                                              thumbVisibility: true,
+                                              controller: _verticalScrollController,
+                                              child: SingleChildScrollView(
+                                                scrollDirection: Axis.vertical,
+                                                controller: _verticalScrollController,
+                                                child: SelectableText(
+                                                  _scrcpyOutput,
+                                                  style: const TextStyle(fontFamily: 'Consolas', fontSize: 14.0),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 15),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 2, bottom: 5),
+                                  child: Text(
+                                    'adb Output',
+                                    style: Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                ),
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8.0),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Colors.blue),
+                                          borderRadius: BorderRadius.circular(8.0),
+                                        ),
+                                        child: Scrollbar(
+                                          thumbVisibility: true,
+                                          controller: _horizontalScrollController,
+                                          child: SingleChildScrollView(
+                                            scrollDirection: Axis.horizontal,
+                                            controller: _horizontalScrollController,
+                                            child: Scrollbar(
+                                              thumbVisibility: true,
+                                              controller: _verticalScrollController,
+                                              child: SingleChildScrollView(
+                                                scrollDirection: Axis.vertical,
+                                                controller: _verticalScrollController,
+                                                child: SelectableText(
+                                                  _adbOutput,
+                                                  style: const TextStyle(fontFamily: 'Consolas', fontSize: 14.0),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 25),
               ],
