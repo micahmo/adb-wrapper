@@ -64,6 +64,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final AdbHelper _adbHelper = AdbHelper();
   List<Map<String, String>> _devices = <Map<String, String>>[];
   bool _areDevicesLoading = true;
+  bool _isAdbOperationHappening = false;
 
   bool _hideOutput = false;
   String _scrcpyOutput = '';
@@ -225,7 +226,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     children: <Widget>[
                       Expanded(
                         child: _areDevicesLoading
-                            ? const Center(child: CircularProgressIndicator())
+                            ? const Center(
+                                child: SizedBox(
+                                  width: 30,
+                                  height: 30,
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
                             : _devices.isEmpty
                                 ? const Text('No devices connected')
                                 : ListView.builder(
@@ -313,9 +320,20 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                   ),
                 ),
                 const SizedBox(height: 25),
-                Text(
-                  'Add Device',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                Row(
+                  children: <Widget>[
+                    Text(
+                      'Add Device',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const Spacer(),
+                    if (_isAdbOperationHappening)
+                      const SizedBox(
+                        width: 30,
+                        height: 30,
+                        child: CircularProgressIndicator(),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 25),
                 TextField(
@@ -359,10 +377,14 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                   children: <Widget>[
                     ElevatedButton(
                       onPressed: () async {
+                        setState(() {
+                          _isAdbOperationHappening = true;
+                        });
                         final Map<String, dynamic> result = await _adbHelper.pairDevice(_ipController.text, _pairingPortController.text, _pairingCodeController.text);
                         setState(() {
                           _appendAdbOutput(result['error']);
                           _appendAdbOutput(result['output']);
+                          _isAdbOperationHappening = false;
                         });
 
                         await _loadConnectedDevices();
@@ -372,10 +394,14 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     const SizedBox(width: 15),
                     ElevatedButton(
                       onPressed: () async {
+                        setState(() {
+                          _isAdbOperationHappening = true;
+                        });
                         final Map<String, dynamic> result = await _adbHelper.connectDevice(_ipController.text, _portController.text);
                         setState(() {
                           _appendAdbOutput(result['error']);
                           _appendAdbOutput(result['output']);
+                          _isAdbOperationHappening = false;
                         });
 
                         await _loadConnectedDevices();
