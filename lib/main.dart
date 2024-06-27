@@ -146,6 +146,34 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     });
   }
 
+  void _connectDevice() async {
+    setState(() {
+      _isAdbOperationHappening = true;
+    });
+    final Map<String, dynamic> result = await _adbHelper.connectDevice(_ipController.text, _portController.text);
+    setState(() {
+      _appendAdbOutput(result['error']);
+      _appendAdbOutput(result['output']);
+      _isAdbOperationHappening = false;
+    });
+
+    await _loadConnectedDevices();
+  }
+
+  void _pairDevice() async {
+    setState(() {
+      _isAdbOperationHappening = true;
+    });
+    final Map<String, dynamic> result = await _adbHelper.pairDevice(_ipController.text, _pairingPortController.text, _pairingCodeController.text);
+    setState(() {
+      _appendAdbOutput(result['error']);
+      _appendAdbOutput(result['output']);
+      _isAdbOperationHappening = false;
+    });
+
+    await _loadConnectedDevices();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -352,6 +380,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     labelText: 'Port',
                   ),
                   controller: _portController,
+                  onSubmitted: (_) => _connectDevice(),
                 ),
                 const SizedBox(height: 25),
                 TextField(
@@ -370,42 +399,19 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                     labelText: 'Pairing Port',
                   ),
                   controller: _pairingPortController,
+                  onSubmitted: (_) => _pairDevice(),
                 ),
                 const SizedBox(height: 25),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: <Widget>[
                     ElevatedButton(
-                      onPressed: () async {
-                        setState(() {
-                          _isAdbOperationHappening = true;
-                        });
-                        final Map<String, dynamic> result = await _adbHelper.pairDevice(_ipController.text, _pairingPortController.text, _pairingCodeController.text);
-                        setState(() {
-                          _appendAdbOutput(result['error']);
-                          _appendAdbOutput(result['output']);
-                          _isAdbOperationHappening = false;
-                        });
-
-                        await _loadConnectedDevices();
-                      },
+                      onPressed: _pairDevice,
                       child: const Text('Pair'),
                     ),
                     const SizedBox(width: 15),
                     ElevatedButton(
-                      onPressed: () async {
-                        setState(() {
-                          _isAdbOperationHappening = true;
-                        });
-                        final Map<String, dynamic> result = await _adbHelper.connectDevice(_ipController.text, _portController.text);
-                        setState(() {
-                          _appendAdbOutput(result['error']);
-                          _appendAdbOutput(result['output']);
-                          _isAdbOperationHappening = false;
-                        });
-
-                        await _loadConnectedDevices();
-                      },
+                      onPressed: _connectDevice,
                       child: const Text('Connect'),
                     ),
                   ],
