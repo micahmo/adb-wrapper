@@ -66,8 +66,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   bool _areDevicesLoading = true;
 
   bool _hideOutput = false;
-  String _scrcpyOutput = "";
-  String _adbOutput = "";
+  String _scrcpyOutput = '';
+  String _adbOutput = '';
 
   void _loadConfig() async {
     final Map<String, dynamic> config = await ConfigHelper.readConfig();
@@ -240,7 +240,22 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                           borderRadius: BorderRadius.circular(10),
                                         ),
                                         child: ListTile(
-                                          title: Text("${_devices[index]['identifier']!} (${_devices[index]['model'] ?? ''})"),
+                                          title: Text.rich(
+                                            TextSpan(
+                                              children: <InlineSpan>[
+                                                TextSpan(text: '${_devices[index]['identifier']!} '),
+                                                TextSpan(text: '(${_devices[index]['model'] ?? ''})'),
+                                                if (_devices[index]['offline'] == true.toString())
+                                                  const TextSpan(
+                                                    text: ' Offline',
+                                                    style: TextStyle(
+                                                      color: Colors.red,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
                                           trailing: PopupMenuButton<String>(
                                             onSelected: (String result) async {
                                               if (result == 'disconnect') {
@@ -251,7 +266,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 });
                                                 await _loadConnectedDevices();
                                               } else if (result.startsWith('scrcpy')) {
-                                                _scrcpyOutput = "";
+                                                _scrcpyOutput = '';
                                                 final Process process = await Process.start(
                                                   _scrcpyPathController.text,
                                                   <String>[

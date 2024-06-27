@@ -36,7 +36,8 @@ class AdbHelper {
     final List<Map<String, String>> devices = <Map<String, String>>[];
 
     for (String line in lines.skip(1)) {
-      if (line != "" && line.contains('device')) {
+      line = line.trim();
+      if (line != "" && line != "List of devices attached") {
         final List<String> parts = line.split(RegExp(r'\s+'));
         final Map<String, String> deviceInfo = <String, String>{};
 
@@ -50,6 +51,8 @@ class AdbHelper {
             deviceInfo[keyValue[0]] = keyValue[1];
           }
         }
+
+        deviceInfo['offline'] = line.contains('offline').toString();
 
         devices.add(deviceInfo);
       }
