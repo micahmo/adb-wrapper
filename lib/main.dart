@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:adb_wrapper/adb_helper.dart';
 import 'package:adb_wrapper/config_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
@@ -218,6 +219,44 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     await windowManager.destroy();
   }
 
+  Widget _buildTextField(TextEditingController controller, String label, VoidCallback onSubmitted) {
+    final FocusNode focusNode = FocusNode();
+    return Focus(
+      skipTraversal: true,
+      onKeyEvent: (FocusNode node, KeyEvent event) {
+        if (event.logicalKey == LogicalKeyboardKey.escape) {
+          controller.clear();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: TextField(
+        focusNode: focusNode,
+        decoration: InputDecoration(
+          isDense: true,
+          border: const OutlineInputBorder(),
+          labelText: label,
+          suffixIcon: FocusTraversalGroup(
+            descendantsAreFocusable: false,
+            child: Padding(
+              key: UniqueKey(),
+              padding: const EdgeInsets.only(right: 4.0),
+              child: IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  controller.clear();
+                  focusNode.requestFocus();
+                },
+              ),
+            ),
+          ),
+        ),
+        controller: controller,
+        onSubmitted: (_) => onSubmitted(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -364,43 +403,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                   ],
                 ),
                 const SizedBox(height: 25),
-                TextField(
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: OutlineInputBorder(),
-                    labelText: 'Device IP Address',
-                  ),
-                  controller: _ipController,
-                ),
+                _buildTextField(_ipController, 'Device IP Address', _connectDevice),
                 const SizedBox(height: 25),
-                TextField(
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: OutlineInputBorder(),
-                    labelText: 'Port',
-                  ),
-                  controller: _portController,
-                  onSubmitted: (_) => _connectDevice(),
-                ),
+                _buildTextField(_portController, 'Port', _connectDevice),
                 const SizedBox(height: 25),
-                TextField(
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: OutlineInputBorder(),
-                    labelText: 'Pairing Code',
-                  ),
-                  controller: _pairingCodeController,
-                ),
+                _buildTextField(_pairingCodeController, 'Pairing Code', _pairDevice),
                 const SizedBox(height: 25),
-                TextField(
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: OutlineInputBorder(),
-                    labelText: 'Pairing Port',
-                  ),
-                  controller: _pairingPortController,
-                  onSubmitted: (_) => _pairDevice(),
-                ),
+                _buildTextField(_pairingPortController, 'Pairing Port', _pairDevice),
                 const SizedBox(height: 25),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -422,14 +431,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 25),
-                TextField(
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: OutlineInputBorder(),
-                    labelText: 'scrcpy Path',
-                  ),
-                  controller: _scrcpyPathController,
-                ),
+                _buildTextField(_scrcpyPathController, 'scrcpy Path', () {}),
                 const SizedBox(height: 25),
                 Row(
                   children: <Widget>[
