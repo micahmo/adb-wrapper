@@ -57,6 +57,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   final TextEditingController _pairingCodeController = TextEditingController();
   final TextEditingController _pairingPortController = TextEditingController();
   final TextEditingController _scrcpyPathController = TextEditingController();
+  final FocusNode _portFocusNode = FocusNode();
   final ScrollController _scrcpyOutputVerticalScrollController = ScrollController();
   final ScrollController _scrcpyOutputhorizontalScrollController = ScrollController();
   final ScrollController _adbOutputverticalScrollController = ScrollController();
@@ -104,6 +105,25 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
       'window_height': bounds.height.toString(),
     };
     await ConfigHelper.writeConfig(config);
+  }
+
+  void _handlePasteIp() {
+    if (_ipController.text.contains(':')) {
+      List<String> parts = _ipController.text.split(':');
+      if (parts.length == 2) {
+        String ip = parts[0];
+        String port = parts[1];
+
+        setState(() {
+          _ipController.text = ip;
+          _portController.text = port;
+        });
+
+        if (port.isNotEmpty) {
+          _portFocusNode.requestFocus();
+        }
+      }
+    }
   }
 
   void _queueConfigSave() {
@@ -179,7 +199,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
   void initState() {
     super.initState();
     _loadConfig();
-    _ipController.addListener(_queueConfigSave);
+    _ipController.addListener(() {
+      _queueConfigSave();
+      _handlePasteIp();
+    });
     _portController.addListener(_queueConfigSave);
     _pairingCodeController.addListener(_queueConfigSave);
     _pairingPortController.addListener(_queueConfigSave);
@@ -219,8 +242,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     await windowManager.destroy();
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, VoidCallback onSubmitted) {
-    final FocusNode focusNode = FocusNode();
+  Widget _buildTextField(TextEditingController controller, String label, VoidCallback onSubmitted, {FocusNode? focusNode}) {
+    focusNode ??= FocusNode();
     return Focus(
       skipTraversal: true,
       onKeyEvent: (FocusNode node, KeyEvent event) {
@@ -245,7 +268,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                 icon: const Icon(Icons.clear),
                 onPressed: () {
                   controller.clear();
-                  focusNode.requestFocus();
+                  focusNode!.requestFocus();
                 },
               ),
             ),
@@ -405,7 +428,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                 const SizedBox(height: 25),
                 _buildTextField(_ipController, 'Device IP Address', _connectDevice),
                 const SizedBox(height: 25),
-                _buildTextField(_portController, 'Port', _connectDevice),
+                _buildTextField(_portController, 'Port', _connectDevice, focusNode: _portFocusNode),
                 const SizedBox(height: 25),
                 _buildTextField(_pairingCodeController, 'Pairing Code', _pairDevice),
                 const SizedBox(height: 25),
