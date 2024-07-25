@@ -244,6 +244,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
 
   Widget _buildTextField(TextEditingController controller, String label, VoidCallback onSubmitted, {FocusNode? focusNode}) {
     focusNode ??= FocusNode();
+
+    focusNode.addListener(() {
+      if (focusNode!.hasFocus) {
+        controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
+      }
+    });
+
     return Focus(
       skipTraversal: true,
       onKeyEvent: (FocusNode node, KeyEvent event) {
