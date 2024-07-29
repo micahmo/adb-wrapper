@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:ffi';
 import 'dart:io';
 import 'package:adb_wrapper/adb_helper.dart';
 import 'package:adb_wrapper/config_helper.dart';
+import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:win32/win32.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
@@ -193,6 +196,17 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     });
 
     await _loadConnectedDevices();
+  }
+
+  Future<void> _focusScrcpyWindow(List<String> titlesToTry) async {
+    for (String name in titlesToTry) {
+      final Pointer<Utf16> titlePtr = name.toNativeUtf16();
+      final int windowHandle = FindWindow(nullptr, titlePtr);
+      calloc.free(titlePtr);
+      if (windowHandle != NULL) {
+        SetForegroundWindow(windowHandle);
+      }
+    }
   }
 
   @override
@@ -391,6 +405,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                     _scrcpyOutput += data;
                                                   });
                                                 });
+
+                                                // Attempt to focus the scrcpy window
+                                                await Future<void>.delayed(const Duration(seconds: 1));
+                                                _focusScrcpyWindow(<String>[
+                                                  _devices[index]['model']?.toString() ?? '',
+                                                  _devices[index]['model']?.toString().replaceAll('_', ' ') ?? '',
+                                                ]);
                                               }
                                             },
                                             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
