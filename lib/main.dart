@@ -407,7 +407,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
                                                 });
 
                                                 // Attempt to focus the scrcpy window
-                                                await Future<void>.delayed(const Duration(seconds: 1));
+                                                await Future<void>.delayed(const Duration(seconds: 2));
                                                 _focusScrcpyWindow(<String>[
                                                   _devices[index]['model']?.toString() ?? '',
                                                   _devices[index]['model']?.toString().replaceAll('_', ' ') ?? '',
