@@ -3,6 +3,7 @@ import 'dart:ffi';
 import 'dart:io';
 import 'package:adb_wrapper/adb_helper.dart';
 import 'package:adb_wrapper/config_helper.dart';
+import 'package:clipboard_watcher/clipboard_watcher.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,7 +54,7 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> with WindowListener {
+class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardListener {
   Timer? _configSaveTimer;
   final TextEditingController _ipController = TextEditingController();
   final TextEditingController _portController = TextEditingController();
@@ -125,6 +126,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         if (port.isNotEmpty) {
           _portFocusNode.requestFocus();
         }
+
+        _connectDevice();
       }
     }
   }
@@ -223,6 +226,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     _scrcpyPathController.addListener(_queueConfigSave);
     windowManager.addListener(this);
     _loadConnectedDevices();
+
+    clipboardWatcher.addListener(this);
+    clipboardWatcher.start();
   }
 
   @override
@@ -235,6 +241,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
     _pairingPortController.dispose();
     _scrcpyPathController.dispose();
     windowManager.removeListener(this);
+
+    clipboardWatcher.removeListener(this);
+    clipboardWatcher.stop();
+
     super.dispose();
   }
 
@@ -299,6 +309,60 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener {
         onSubmitted: (_) => onSubmitted(),
       ),
     );
+  }
+
+  @override
+  void onClipboardChanged() async {
+    ClipboardData? clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+    String? clipboardText = clipboardData?.text;
+
+    List<String>? parts = clipboardText?.split(':');
+    if (parts?.length == 2) {
+      String ip = parts![0];
+      String port = parts[1];
+
+      if (ip.isNotEmpty && port.isNotEmpty) {
+        try {
+          InternetAddress(ip);
+          int.parse(port);
+
+          // If we get here, we parsed successfully. Ask the user if they want to use it.
+          if (context.mounted) {
+            await showDialog(
+              // ignore: use_build_context_synchronously
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Detected Copied IP:Port'),
+                  content: Text('The following was detected: $ip:$port. Would you like to use this?'),
+                  actions: <Widget>[
+                    TextButton(
+                      child: const Text('No'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    TextButton(
+                      child: const Text('Yes'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+
+                        setState(() {
+                          _ipController.text = ip;
+                          _portController.text = port;
+                        });
+
+                        _connectDevice();
+                      },
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+        } catch (e) {
+          // We couldn't parse the IP address or port. Ignore
+        }
+      }
+    }
   }
 
   @override
