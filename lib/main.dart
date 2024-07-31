@@ -558,7 +558,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 25),
-                _buildTextField(_scrcpyPathController, 'scrcpy Path', () {}),
+                _buildTextField(_scrcpyPathController, 'scrcpy Path', () async {}),
                 const SizedBox(height: 25),
                 Row(
                   children: <Widget>[
