@@ -111,7 +111,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     await ConfigHelper.writeConfig(config);
   }
 
-  void _handlePasteIp() {
+  Future<void> _handlePasteIp() async {
     if (_ipController.text.contains(':')) {
       List<String> parts = _ipController.text.split(':');
       if (parts.length == 2) {
@@ -127,7 +127,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
           _portFocusNode.requestFocus();
         }
 
-        _connectDevice();
+        await _connectDevice();
       }
     }
   }
@@ -173,7 +173,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     });
   }
 
-  void _connectDevice() async {
+  Future<void> _connectDevice() async {
     setState(() {
       _isAdbOperationHappening = true;
     });
@@ -185,9 +185,15 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     });
 
     await _loadConnectedDevices();
+
+    for (Map<String, String> device in _devices) {
+      if (device['identifier'] == '${_ipController.text}:${_portController.text}') {
+        await _executeScrcpy(device: device, audio: false);
+      }
+    }
   }
 
-  void _pairDevice() async {
+  Future<void> _pairDevice() async {
     setState(() {
       _isAdbOperationHappening = true;
     });
@@ -199,6 +205,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     });
 
     await _loadConnectedDevices();
+
+    await _connectDevice();
   }
 
   Future<void> _focusScrcpyWindow(List<String> titlesToTry) async {
@@ -212,13 +220,89 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     }
   }
 
+  Widget _buildTextField(TextEditingController controller, String label, Future<void> Function() onSubmitted, {FocusNode? focusNode}) {
+    focusNode ??= FocusNode();
+
+    focusNode.addListener(() {
+      if (focusNode!.hasFocus) {
+        controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
+      }
+    });
+
+    return Focus(
+      skipTraversal: true,
+      onKeyEvent: (FocusNode node, KeyEvent event) {
+        if (event.logicalKey == LogicalKeyboardKey.escape) {
+          controller.clear();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: TextField(
+        focusNode: focusNode,
+        decoration: InputDecoration(
+          isDense: true,
+          border: const OutlineInputBorder(),
+          labelText: label,
+          suffixIcon: FocusTraversalGroup(
+            descendantsAreFocusable: false,
+            child: Padding(
+              key: UniqueKey(),
+              padding: const EdgeInsets.only(right: 4.0),
+              child: IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  controller.clear();
+                  focusNode!.requestFocus();
+                },
+              ),
+            ),
+          ),
+        ),
+        controller: controller,
+        onSubmitted: (_) async => await onSubmitted(),
+      ),
+    );
+  }
+
+  Future<void> _executeScrcpy({required Map<String, String> device, required bool audio}) async {
+    _scrcpyOutput = '';
+    final Process process = await Process.start(
+      _scrcpyPathController.text,
+      <String>[
+        '--serial=${device['identifier']}',
+        if (!audio) '--no-audio',
+      ],
+      runInShell: true,
+    );
+    process.stdout.transform(const SystemEncoding().decoder).listen((String data) {
+      setState(() {
+        _hideOutput = false;
+        _scrcpyOutput += data;
+      });
+    });
+    process.stderr.transform(const SystemEncoding().decoder).listen((String data) {
+      setState(() {
+        _hideOutput = false;
+        _scrcpyOutput += data;
+      });
+    });
+
+    // Attempt to focus the scrcpy window
+    await Future<void>.delayed(const Duration(seconds: 2));
+    await _focusScrcpyWindow(<String>[
+      device['model']?.toString() ?? '',
+      device['model']?.toString().replaceAll('_', ' ') ?? '',
+    ]);
+  }
+
   @override
   void initState() {
     super.initState();
     _loadConfig();
-    _ipController.addListener(() {
+    _ipController.addListener(() async {
       _queueConfigSave();
-      _handlePasteIp();
+      await _handlePasteIp();
     });
     _portController.addListener(_queueConfigSave);
     _pairingCodeController.addListener(_queueConfigSave);
@@ -266,51 +350,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     await windowManager.destroy();
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, VoidCallback onSubmitted, {FocusNode? focusNode}) {
-    focusNode ??= FocusNode();
-
-    focusNode.addListener(() {
-      if (focusNode!.hasFocus) {
-        controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
-      }
-    });
-
-    return Focus(
-      skipTraversal: true,
-      onKeyEvent: (FocusNode node, KeyEvent event) {
-        if (event.logicalKey == LogicalKeyboardKey.escape) {
-          controller.clear();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: TextField(
-        focusNode: focusNode,
-        decoration: InputDecoration(
-          isDense: true,
-          border: const OutlineInputBorder(),
-          labelText: label,
-          suffixIcon: FocusTraversalGroup(
-            descendantsAreFocusable: false,
-            child: Padding(
-              key: UniqueKey(),
-              padding: const EdgeInsets.only(right: 4.0),
-              child: IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  controller.clear();
-                  focusNode!.requestFocus();
-                },
-              ),
-            ),
-          ),
-        ),
-        controller: controller,
-        onSubmitted: (_) => onSubmitted(),
-      ),
-    );
-  }
-
   @override
   void onClipboardChanged() async {
     ClipboardData? clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
@@ -340,9 +379,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                       child: const Text('No'),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                    TextButton(
+                    FilledButton(
                       child: const Text('Yes'),
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.of(context).pop();
 
                         setState(() {
@@ -350,7 +389,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                           _portController.text = port;
                         });
 
-                        _connectDevice();
+                        await _connectDevice();
                       },
                     ),
                   ],
@@ -448,34 +487,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                                 });
                                                 await _loadConnectedDevices();
                                               } else if (result.startsWith('scrcpy')) {
-                                                _scrcpyOutput = '';
-                                                final Process process = await Process.start(
-                                                  _scrcpyPathController.text,
-                                                  <String>[
-                                                    '--serial=${_devices[index]['identifier']}',
-                                                    if (result.endsWith('noaudio')) '--no-audio',
-                                                  ],
-                                                  runInShell: true,
-                                                );
-                                                process.stdout.transform(const SystemEncoding().decoder).listen((String data) {
-                                                  setState(() {
-                                                    _hideOutput = false;
-                                                    _scrcpyOutput += data;
-                                                  });
-                                                });
-                                                process.stderr.transform(const SystemEncoding().decoder).listen((String data) {
-                                                  setState(() {
-                                                    _hideOutput = false;
-                                                    _scrcpyOutput += data;
-                                                  });
-                                                });
-
-                                                // Attempt to focus the scrcpy window
-                                                await Future<void>.delayed(const Duration(seconds: 2));
-                                                _focusScrcpyWindow(<String>[
-                                                  _devices[index]['model']?.toString() ?? '',
-                                                  _devices[index]['model']?.toString().replaceAll('_', ' ') ?? '',
-                                                ]);
+                                                await _executeScrcpy(device: _devices[index], audio: !result.endsWith('noaudio'));
                                               }
                                             },
                                             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -530,12 +542,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: <Widget>[
                     ElevatedButton(
-                      onPressed: _pairDevice,
+                      onPressed: () async => await _pairDevice(),
                       child: const Text('Pair'),
                     ),
                     const SizedBox(width: 15),
                     ElevatedButton(
-                      onPressed: _connectDevice,
+                      onPressed: () async => await _connectDevice(),
                       child: const Text('Connect'),
                     ),
                   ],
