@@ -76,6 +76,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   String _scrcpyOutput = '';
   String _adbOutput = '';
 
+  BuildContext? dialogContext;
+
   void _loadConfig() async {
     final Map<String, dynamic> config = await ConfigHelper.readConfig();
     setState(() {
@@ -367,10 +369,16 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
           // If we get here, we parsed successfully. Ask the user if they want to use it.
           if (context.mounted) {
+            if (dialogContext != null) {
+              Navigator.of(dialogContext!).pop();
+              dialogContext = null;
+            }
+
             await showDialog(
               // ignore: use_build_context_synchronously
               context: context,
               builder: (BuildContext context) {
+                dialogContext = context;
                 return AlertDialog(
                   title: const Text('Detected Copied IP:Port'),
                   content: Text('The following was detected: $ip:$port. Would you like to use this?'),
@@ -396,6 +404,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                 );
               },
             );
+
+            dialogContext = null;
           }
         } catch (e) {
           // We couldn't parse the IP address or port. Ignore
