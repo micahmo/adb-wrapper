@@ -212,13 +212,39 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     await _connectDevice();
   }
 
-  Future<void> _focusScrcpyWindow(List<String> titlesToTry) async {
-    for (String name in titlesToTry) {
+  List<String> _generateWindowTitlesToTry(String baseTitle) {
+    return <String>[
+      baseTitle,
+      baseTitle.replaceAll('_', ' '),
+    ];
+  }
+
+  Future<int?> _findScrcpyWindow(String baseTitle) async {
+    for (String name in _generateWindowTitlesToTry(baseTitle)) {
       final Pointer<Utf16> titlePtr = name.toNativeUtf16();
       final int windowHandle = FindWindow(nullptr, titlePtr);
       calloc.free(titlePtr);
       if (windowHandle != NULL) {
+        return windowHandle;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _focusScrcpyWindow(String? baseTitle) async {
+    if (baseTitle != null) {
+      final int? windowHandle = await _findScrcpyWindow(baseTitle);
+      if (windowHandle != null) {
         SetForegroundWindow(windowHandle);
+      }
+    }
+  }
+
+  Future<void> _closeScrcpyWindow(String? baseTitle) async {
+    if (baseTitle != null) {
+      final int? windowHandle = await _findScrcpyWindow(baseTitle);
+      if (windowHandle != null) {
+        PostMessage(windowHandle, WM_CLOSE, 0, 0);
       }
     }
   }
@@ -269,6 +295,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   }
 
   Future<void> _executeScrcpy({required Map<String, String> device, required bool audio}) async {
+    // Close any existing windows for this device
+    _closeScrcpyWindow(device['model']?.toString());
+
     _scrcpyOutput = '';
     final Process process = await Process.start(
       _scrcpyPathController.text,
@@ -293,10 +322,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
     // Attempt to focus the scrcpy window
     await Future<void>.delayed(const Duration(seconds: 2));
-    await _focusScrcpyWindow(<String>[
-      device['model']?.toString() ?? '',
-      device['model']?.toString().replaceAll('_', ' ') ?? '',
-    ]);
+    await _focusScrcpyWindow(device['model']?.toString());
   }
 
   @override
