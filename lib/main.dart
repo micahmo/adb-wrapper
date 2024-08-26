@@ -487,31 +487,37 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                               ],
                                             ),
                                           ),
-                                          trailing: PopupMenuButton<String>(
-                                            onSelected: (String result) async {
-                                              if (result == 'disconnect') {
-                                                final Map<String, dynamic> result = await _adbHelper.disconnectDevice(_devices[index]['identifier']!);
-                                                setState(() {
-                                                  _appendAdbOutput(result['error']);
-                                                  _appendAdbOutput(result['output']);
-                                                });
-                                                await _loadConnectedDevices();
-                                              } else if (result.startsWith('scrcpy')) {
-                                                await _executeScrcpy(device: _devices[index], audio: !result.endsWith('noaudio'));
-                                              }
-                                            },
-                                            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                                              const PopupMenuItem<String>(
-                                                value: 'disconnect',
-                                                child: Text('Disconnect'),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: <Widget>[
+                                              IconButton(
+                                                iconSize: 17,
+                                                icon: const Icon(Icons.phonelink_erase_rounded),
+                                                tooltip: 'Disconnect',
+                                                onPressed: () async {
+                                                  final Map<String, dynamic> result = await _adbHelper.disconnectDevice(_devices[index]['identifier']!);
+                                                  setState(() {
+                                                    _appendAdbOutput(result['error']);
+                                                    _appendAdbOutput(result['output']);
+                                                  });
+                                                  await _loadConnectedDevices();
+                                                },
                                               ),
-                                              const PopupMenuItem<String>(
-                                                value: 'scrcpy_audio',
-                                                child: Text('scrcpy (audio)'),
+                                              IconButton(
+                                                iconSize: 17,
+                                                icon: const Icon(Icons.screen_share_rounded),
+                                                tooltip: 'scrcpy (audio)',
+                                                onPressed: () async {
+                                                  await _executeScrcpy(device: _devices[index], audio: true);
+                                                },
                                               ),
-                                              const PopupMenuItem<String>(
-                                                value: 'scrcpy_noaudio',
-                                                child: Text('scrcpy (no audio)'),
+                                              IconButton(
+                                                iconSize: 17,
+                                                icon: const Icon(Icons.screen_share_outlined),
+                                                tooltip: 'scrcpy (no audio)',
+                                                onPressed: () async {
+                                                  await _executeScrcpy(device: _devices[index], audio: false);
+                                                },
                                               ),
                                             ],
                                           ),
