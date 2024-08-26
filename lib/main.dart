@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
+import 'package:adb_wrapper/acknowledged_icon_button.dart';
 import 'package:adb_wrapper/adb_helper.dart';
 import 'package:adb_wrapper/config_helper.dart';
 import 'package:clipboard_watcher/clipboard_watcher.dart';
@@ -490,7 +491,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                           trailing: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: <Widget>[
-                                              IconButton(
+                                              AcknowledgedIconButton(
                                                 iconSize: 17,
                                                 icon: const Icon(Icons.phonelink_erase_rounded),
                                                 tooltip: 'Disconnect',
@@ -503,7 +504,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                                   await _loadConnectedDevices();
                                                 },
                                               ),
-                                              IconButton(
+                                              AcknowledgedIconButton(
                                                 iconSize: 17,
                                                 icon: const Icon(Icons.screen_share_rounded),
                                                 tooltip: 'scrcpy (audio)',
@@ -511,7 +512,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                                   await _executeScrcpy(device: _devices[index], audio: true);
                                                 },
                                               ),
-                                              IconButton(
+                                              AcknowledgedIconButton(
                                                 iconSize: 17,
                                                 icon: const Icon(Icons.screen_share_outlined),
                                                 tooltip: 'scrcpy (no audio)',
