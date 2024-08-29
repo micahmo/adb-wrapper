@@ -62,6 +62,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   final TextEditingController _pairingCodeController = TextEditingController();
   final TextEditingController _pairingPortController = TextEditingController();
   final TextEditingController _scrcpyPathController = TextEditingController();
+  final FocusNode _ipFocusNode = FocusNode();
   final FocusNode _portFocusNode = FocusNode();
   final ScrollController _scrcpyOutputVerticalScrollController = ScrollController();
   final ScrollController _scrcpyOutputhorizontalScrollController = ScrollController();
@@ -595,6 +596,18 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const Spacer(),
+                    Opacity(
+                      opacity: _isAdbOperationHappening ? 0 : 1,
+                      child: IconButton(
+                          onPressed: () async {
+                            ClipboardData? clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+                            if (clipboardData?.text?.isNotEmpty == true) {
+                              _ipFocusNode.requestFocus();
+                              _ipController.text = clipboardData!.text!;
+                            }
+                          },
+                          icon: const Icon(Icons.paste_rounded)),
+                    ),
                     if (_isAdbOperationHappening)
                       const SizedBox(
                         width: 30,
@@ -604,7 +617,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                   ],
                 ),
                 const SizedBox(height: 25),
-                _buildTextField(_ipController, 'Device IP Address', _connectDevice),
+                _buildTextField(_ipController, 'Device IP Address', _connectDevice, focusNode: _ipFocusNode),
                 const SizedBox(height: 25),
                 _buildTextField(_portController, 'Port', _connectDevice, focusNode: _portFocusNode),
                 const SizedBox(height: 25),
