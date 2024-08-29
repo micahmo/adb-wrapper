@@ -295,8 +295,34 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   }
 
   Future<void> _executeScrcpy({required Map<String, String> device, required bool audio}) async {
+    // Show a dialog to indicate that we're in the process of connecting.
+    // Don't await it, so we can proceed with the work below.
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Dialog(
+          child: Padding(
+            padding: EdgeInsets.all(30.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                SizedBox(
+                  width: 25,
+                  height: 25,
+                  child: CircularProgressIndicator(),
+                ),
+                SizedBox(width: 25),
+                Text("Launching scrcpy (no audio)..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
     // Close any existing windows for this device
-    _closeScrcpyWindow(device['model']?.toString());
+    await _closeScrcpyWindow(device['model']?.toString());
 
     _scrcpyOutput = '';
     final Process process = await Process.start(
@@ -323,6 +349,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     // Attempt to focus the scrcpy window
     await Future<void>.delayed(const Duration(seconds: 2));
     await _focusScrcpyWindow(device['model']?.toString());
+
+    // Pop the loading dialog
+    if (context.mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
