@@ -302,19 +302,19 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return const Dialog(
+        return Dialog(
           child: Padding(
-            padding: EdgeInsets.all(30.0),
+            padding: const EdgeInsets.all(30.0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                SizedBox(
+                const SizedBox(
                   width: 25,
                   height: 25,
                   child: CircularProgressIndicator(),
                 ),
-                SizedBox(width: 25),
-                Text("Launching scrcpy (no audio)..."),
+                const SizedBox(width: 25),
+                Text("Launching scrcpy (${audio ? '' : 'no '}audio)..."),
               ],
             ),
           ),
