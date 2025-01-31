@@ -564,7 +564,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                               ),
                                               AcknowledgedIconButton(
                                                 iconSize: 17,
-                                                icon: const Icon(Icons.screen_share_rounded),
+                                                icon: const Icon(Icons.headphones_rounded),
                                                 tooltip: 'scrcpy (audio)',
                                                 onPressed: () async {
                                                   await _executeScrcpy(device: _devices[index], audio: true);
