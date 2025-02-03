@@ -192,7 +192,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
     for (Map<String, String> device in _devices) {
       if (device['identifier'] == '${_ipController.text}:${_portController.text}') {
-        await _executeScrcpy(device: device, audio: false);
+        await _executeScrcpy(device: device);
       }
     }
   }
@@ -295,7 +295,31 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     );
   }
 
-  Future<void> _executeScrcpy({required Map<String, String> device, required bool audio}) async {
+  Future<void> _executeScrcpy({required Map<String, String> device, bool? audio}) async {
+    // If we haven't been specified an audio, prompt the user
+    audio ??= await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Launching scrcpy'),
+          content: const Text('Do you want to connect with audio enabled?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('No'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            FilledButton(
+              child: const Text('Yes'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If the user still didn't specify...
+    audio ??= false;
+
     // Show a dialog to indicate that we're in the process of connecting.
     // Don't await it, so we can proceed with the work below.
     showDialog(
@@ -314,7 +338,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                   child: CircularProgressIndicator(),
                 ),
                 const SizedBox(width: 25),
-                Text("Launching scrcpy (${audio ? '' : 'no '}audio)..."),
+                Text("Launching scrcpy (${audio! ? '' : 'no '}audio)..."),
               ],
             ),
           ),
