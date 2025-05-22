@@ -8,6 +8,7 @@ import 'package:clipboard_watcher/clipboard_watcher.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:win32/win32.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -61,7 +62,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   final TextEditingController _portController = TextEditingController();
   final TextEditingController _pairingCodeController = TextEditingController();
   final TextEditingController _pairingPortController = TextEditingController();
-  final TextEditingController _scrcpyPathController = TextEditingController();
+  final TextEditingController _scrcpyAndAdbPathController = TextEditingController();
   final FocusNode _ipFocusNode = FocusNode();
   final FocusNode _portFocusNode = FocusNode();
   final ScrollController _scrcpyOutputVerticalScrollController = ScrollController();
@@ -69,7 +70,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   final ScrollController _adbOutputverticalScrollController = ScrollController();
   final ScrollController _adbOutputhorizontalScrollController = ScrollController();
 
-  final AdbHelper _adbHelper = AdbHelper();
+  late AdbHelper _adbHelper;
   List<Map<String, String>> _devices = <Map<String, String>>[];
   bool _areDevicesLoading = true;
   bool _isAdbOperationHappening = false;
@@ -87,7 +88,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       _portController.text = config['port'] ?? '';
       _pairingCodeController.text = config['pairing_code'] ?? '';
       _pairingPortController.text = config['pairing_port'] ?? '';
-      _scrcpyPathController.text = config['scrcpy_path'] ?? '';
+      _scrcpyAndAdbPathController.text = config['scrcpy_and_adb_path'] ?? '';
 
       final double left = double.tryParse(config['window_left']) ?? 200.0;
       final double top = double.tryParse(config['window_top']) ?? 30.0;
@@ -106,7 +107,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       'port': _portController.text,
       'pairing_code': _pairingCodeController.text,
       'pairing_port': _pairingPortController.text,
-      'scrcpy_path': _scrcpyPathController.text,
+      'scrcpy_and_adb_path': _scrcpyAndAdbPathController.text,
       'window_left': bounds.left.toString(),
       'window_top': bounds.top.toString(),
       'window_width': bounds.width.toString(),
@@ -351,7 +352,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
     _scrcpyOutput = '';
     final Process process = await Process.start(
-      _scrcpyPathController.text,
+      p.join(_scrcpyAndAdbPathController.text, "scrcpy.exe"),
       <String>[
         '--serial=${device['identifier']}',
         if (!audio) '--no-audio',
@@ -392,12 +393,17 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     _portController.addListener(_queueConfigSave);
     _pairingCodeController.addListener(_queueConfigSave);
     _pairingPortController.addListener(_queueConfigSave);
-    _scrcpyPathController.addListener(_queueConfigSave);
+    _scrcpyAndAdbPathController.addListener(() {
+      _queueConfigSave();
+      _adbHelper = AdbHelper(adbPath: _scrcpyAndAdbPathController.text);
+    });
     windowManager.addListener(this);
     _loadConnectedDevices();
 
     clipboardWatcher.addListener(this);
     clipboardWatcher.start();
+
+    _adbHelper = AdbHelper(adbPath: _scrcpyAndAdbPathController.text);
   }
 
   @override
@@ -408,7 +414,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     _portController.dispose();
     _pairingCodeController.dispose();
     _pairingPortController.dispose();
-    _scrcpyPathController.dispose();
+    _scrcpyAndAdbPathController.dispose();
     windowManager.removeListener(this);
 
     clipboardWatcher.removeListener(this);
@@ -669,7 +675,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 25),
-                _buildTextField(_scrcpyPathController, 'scrcpy Path', () async {}),
+                _buildTextField(_scrcpyAndAdbPathController, 'scrcpy and adb Path', () async {}),
                 const SizedBox(height: 25),
                 Row(
                   children: <Widget>[

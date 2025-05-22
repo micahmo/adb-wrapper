@@ -1,10 +1,18 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 class AdbHelper {
+  final String adbPath;
+
+  AdbHelper({required this.adbPath});
+
+  String get _adbFullPath => p.join(adbPath, "adb.exe");
+
   /// Runs the `adb devices -l` command and returns a list of connected devices with detailed information.
   Future<Map<String, dynamic>> getConnectedDevices() async {
     try {
-      final ProcessResult result = await Process.run('adb', <String>['devices', '-l']);
+      final ProcessResult result = await Process.run(_adbFullPath, <String>['devices', '-l']);
 
       if (result.exitCode != 0) {
         return <String, dynamic>{
@@ -65,7 +73,7 @@ class AdbHelper {
   Future<Map<String, dynamic>> pairDevice(String ipAddress, String port, String pairingCode) async {
     try {
       // Start the adb pair process
-      final Process process = await Process.start('adb', <String>['pair', '$ipAddress:$port']);
+      final Process process = await Process.start(_adbFullPath, <String>['pair', '$ipAddress:$port']);
 
       // Listen to stdout
       final StringBuffer stdoutBuffer = StringBuffer();
@@ -111,7 +119,7 @@ class AdbHelper {
   Future<Map<String, dynamic>> disconnectDevice(String ipAddress) async {
     try {
       final ProcessResult result = await Process.run(
-        'adb',
+        _adbFullPath,
         <String>['disconnect', ipAddress],
         runInShell: true,
       );
@@ -141,7 +149,7 @@ class AdbHelper {
   Future<Map<String, dynamic>> connectDevice(String ipAddress, String port) async {
     try {
       final ProcessResult result = await Process.run(
-        'adb',
+        _adbFullPath,
         <String>['connect', '$ipAddress:$port'],
         runInShell: true,
       );
