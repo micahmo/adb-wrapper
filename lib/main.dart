@@ -296,7 +296,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     );
   }
 
-  Future<void> _executeScrcpy({required Map<String, String> device, bool? audio}) async {
+  Future<void> _executeScrcpy({required Map<String, String> device, bool? audio, bool? audioDup}) async {
     // If we haven't been specified an audio, prompt the user
     audio ??= await showDialog<bool>(
       context: context,
@@ -320,6 +320,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
     // If the user still didn't specify...
     audio ??= false;
+    audioDup ??= false;
 
     // Show a dialog to indicate that we're in the process of connecting.
     // Don't await it, so we can proceed with the work below.
@@ -356,6 +357,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       <String>[
         '--serial=${device['identifier']}',
         if (!audio) '--no-audio',
+        if (audio) '--audio-source=playback',
+        if (audio && audioDup) '--audio-dup',
       ],
       runInShell: true,
     );
@@ -607,6 +610,21 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                                 onPressed: () async {
                                                   await _executeScrcpy(device: _devices[index], audio: false);
                                                 },
+                                              ),
+                                              PopupMenuButton<String>(
+                                                icon: const Icon(Icons.more_vert, size: 17),
+                                                tooltip: 'More options',
+                                                onSelected: (String value) async {
+                                                  if (value == 'audiodup') {
+                                                    await _executeScrcpy(device: _devices[index], audio: true, audioDup: true);
+                                                  }
+                                                },
+                                                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                                  const PopupMenuItem<String>(
+                                                    value: 'audiodup',
+                                                    child: Text('scrcpy (audio duplication)'),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
