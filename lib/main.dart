@@ -193,7 +193,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
     for (Map<String, String> device in _devices) {
       if (device['identifier'] == '${_ipController.text}:${_portController.text}') {
-        await _executeScrcpy(device: device);
+        await _executeScrcpy(device: device, audio: true, audioDup: true);
       }
     }
   }
@@ -296,31 +296,33 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     );
   }
 
-  Future<void> _executeScrcpy({required Map<String, String> device, bool? audio, bool? audioDup}) async {
+  Future<void> _executeScrcpy({required Map<String, String> device, bool? audio, bool? audioDup, String? app, bool? window}) async {
+    // TODO: This is for audio options, but now we have more options, so it's not this simple. Deciding if I want to keep it or not.
     // If we haven't been specified an audio, prompt the user
-    audio ??= await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Launching scrcpy'),
-          content: const Text('Do you want to connect with audio enabled?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('No'),
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            FilledButton(
-              child: const Text('Yes'),
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-          ],
-        );
-      },
-    );
+    // audio ??= await showDialog<bool>(
+    //   context: context,
+    //   builder: (BuildContext context) {
+    //     return AlertDialog(
+    //       title: const Text('Launching scrcpy'),
+    //       content: const Text('Do you want to connect with audio enabled?'),
+    //       actions: <Widget>[
+    //         TextButton(
+    //           child: const Text('No'),
+    //           onPressed: () => Navigator.of(context).pop(false),
+    //         ),
+    //         FilledButton(
+    //           child: const Text('Yes'),
+    //           onPressed: () => Navigator.of(context).pop(true),
+    //         ),
+    //       ],
+    //     );
+    //   },
+    // );
 
     // If the user still didn't specify...
     audio ??= false;
     audioDup ??= false;
+    window ??= false;
 
     // Show a dialog to indicate that we're in the process of connecting.
     // Don't await it, so we can proceed with the work below.
@@ -328,19 +330,19 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return Dialog(
+        return const Dialog(
           child: Padding(
-            padding: const EdgeInsets.all(30.0),
+            padding: EdgeInsets.all(30.0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                const SizedBox(
+                SizedBox(
                   width: 25,
                   height: 25,
                   child: CircularProgressIndicator(),
                 ),
-                const SizedBox(width: 25),
-                Text("Launching scrcpy (${audio! ? '' : 'no '}audio)..."),
+                SizedBox(width: 25),
+                Text("Launching scrcpy..."),
               ],
             ),
           ),
@@ -349,7 +351,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     );
 
     // Close any existing windows for this device
+    //if (app?.isNotEmpty != true) { // TODO I might want this condition to not close other instances when I open an app, for example.
     await _closeScrcpyWindow(device['model']?.toString());
+    //}
 
     _scrcpyOutput = '';
     final Process process = await Process.start(
@@ -359,6 +363,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
         if (!audio) '--no-audio',
         if (audio) '--audio-source=playback',
         if (audio && audioDup) '--audio-dup',
+        if (app?.isNotEmpty == true) ...<String>['--new-display=1920x1080', '--start-app=$app'],
+        if (window) '--new-display=1080x1920',
       ],
       runInShell: true,
     );
@@ -606,23 +612,35 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                               AcknowledgedIconButton(
                                                 iconSize: 17,
                                                 icon: const Icon(Icons.screen_share_outlined),
-                                                tooltip: 'scrcpy (no audio)',
+                                                tooltip: 'scrcpy (audio dup)',
                                                 onPressed: () async {
-                                                  await _executeScrcpy(device: _devices[index], audio: false);
+                                                  await _executeScrcpy(device: _devices[index], audio: true, audioDup: true);
                                                 },
                                               ),
                                               PopupMenuButton<String>(
                                                 icon: const Icon(Icons.more_vert, size: 17),
                                                 tooltip: 'More options',
                                                 onSelected: (String value) async {
-                                                  if (value == 'audiodup') {
-                                                    await _executeScrcpy(device: _devices[index], audio: true, audioDup: true);
+                                                  if (value == 'noaudio') {
+                                                    await _executeScrcpy(device: _devices[index], audio: false);
+                                                  } else if (value == 'tiktok') {
+                                                    await _executeScrcpy(device: _devices[index], audio: true, app: 'com.zhiliaoapp.musically');
+                                                  } else if (value == 'window') {
+                                                    await _executeScrcpy(device: _devices[index], window: true);
                                                   }
                                                 },
                                                 itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                                                   const PopupMenuItem<String>(
-                                                    value: 'audiodup',
-                                                    child: Text('scrcpy (audio duplication)'),
+                                                    value: 'noaudio',
+                                                    child: Text('scrcpy (no audio)'),
+                                                  ),
+                                                  const PopupMenuItem<String>(
+                                                    value: 'tiktok',
+                                                    child: Text('scrcpy (tiktok)'),
+                                                  ),
+                                                  const PopupMenuItem<String>(
+                                                    value: 'window',
+                                                    child: Text('scrcpy (new window)'),
                                                   ),
                                                 ],
                                               ),
