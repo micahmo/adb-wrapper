@@ -625,6 +625,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                                     await _executeScrcpy(device: _devices[index], audio: false);
                                                   } else if (value == 'tiktok') {
                                                     await _executeScrcpy(device: _devices[index], audio: true, app: 'com.zhiliaoapp.musically');
+                                                  } else if (value == 'plex') {
+                                                    await _executeScrcpy(device: _devices[index], audio: true, app: 'com.plexapp.android');
                                                   } else if (value == 'window') {
                                                     await _executeScrcpy(device: _devices[index], window: true);
                                                   }
@@ -637,6 +639,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                                   const PopupMenuItem<String>(
                                                     value: 'tiktok',
                                                     child: Text('scrcpy (tiktok)'),
+                                                  ),
+                                                  const PopupMenuItem<String>(
+                                                    value: 'plex',
+                                                    child: Text('scrcpy (plex)'),
                                                   ),
                                                   const PopupMenuItem<String>(
                                                     value: 'window',
