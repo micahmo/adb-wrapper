@@ -639,11 +639,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                                   if (value == 'noaudio') {
                                                     await _executeScrcpy(device: _devices[index], audio: false);
                                                   } else if (value == 'tiktok') {
-                                                    await _executeScrcpy(device: _devices[index], audio: true, app: 'com.zhiliaoapp.musically');
+                                                    await _executeScrcpy(device: _devices[index], app: 'com.zhiliaoapp.musically', promptForAudio: true);
                                                   } else if (value == 'plex') {
-                                                    await _executeScrcpy(device: _devices[index], audio: true, app: 'com.plexapp.android');
+                                                    await _executeScrcpy(device: _devices[index], audio: true, app: 'com.plexapp.android', promptForAudio: true);
                                                   } else if (value == 'window') {
-                                                    await _executeScrcpy(device: _devices[index], window: true);
+                                                    await _executeScrcpy(device: _devices[index], window: true, promptForAudio: true);
                                                   }
                                                 },
                                                 itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
