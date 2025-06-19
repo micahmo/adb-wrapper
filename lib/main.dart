@@ -193,7 +193,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
     for (Map<String, String> device in _devices) {
       if (device['identifier'] == '${_ipController.text}:${_portController.text}') {
-        await _executeScrcpy(device: device, audio: true, audioDup: true);
+        await _executeScrcpy(device: device, promptForAudio: true);
       }
     }
   }
@@ -296,28 +296,43 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     );
   }
 
-  Future<void> _executeScrcpy({required Map<String, String> device, bool? audio, bool? audioDup, String? app, bool? window}) async {
-    // TODO: This is for audio options, but now we have more options, so it's not this simple. Deciding if I want to keep it or not.
-    // If we haven't been specified an audio, prompt the user
-    // audio ??= await showDialog<bool>(
-    //   context: context,
-    //   builder: (BuildContext context) {
-    //     return AlertDialog(
-    //       title: const Text('Launching scrcpy'),
-    //       content: const Text('Do you want to connect with audio enabled?'),
-    //       actions: <Widget>[
-    //         TextButton(
-    //           child: const Text('No'),
-    //           onPressed: () => Navigator.of(context).pop(false),
-    //         ),
-    //         FilledButton(
-    //           child: const Text('Yes'),
-    //           onPressed: () => Navigator.of(context).pop(true),
-    //         ),
-    //       ],
-    //     );
-    //   },
-    // );
+  Future<void> _executeScrcpy({required Map<String, String> device, bool? audio, bool? audioDup, String? app, bool? window, bool? promptForAudio}) async {
+    // Prompt, if specified
+    if (promptForAudio == true) {
+      await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Launching scrcpy'),
+            content: const Text('Choose audio options...'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('no audio'),
+                onPressed: () {
+                  // Don't need to change anything, default is false
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('audio'),
+                onPressed: () {
+                  audio = true;
+                  Navigator.of(context).pop();
+                },
+              ),
+              FilledButton(
+                child: const Text('audio dup'),
+                onPressed: () {
+                  audio = true;
+                  audioDup = true;
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
 
     // If the user still didn't specify...
     audio ??= false;
@@ -360,9 +375,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       p.join(_scrcpyAndAdbPathController.text, "scrcpy.exe"),
       <String>[
         '--serial=${device['identifier']}',
-        if (!audio) '--no-audio',
-        if (audio) '--audio-source=playback',
-        if (audio && audioDup) '--audio-dup',
+        if (!audio!) '--no-audio',
+        if (audio!) '--audio-source=playback',
+        if (audio! && audioDup!) '--audio-dup',
         if (app?.isNotEmpty == true) ...<String>['--new-display=1920x1080', '--start-app=$app'],
         if (window) '--new-display=1080x1920',
       ],
