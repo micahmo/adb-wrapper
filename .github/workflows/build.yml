@@ -1,3 +1,7 @@
+concurrency:
+  group: flutter-build-${{ github.ref }}
+  cancel-in-progress: true
+
 name: Flutter Build
 
 on:
