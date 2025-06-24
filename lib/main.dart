@@ -8,6 +8,7 @@ import 'package:clipboard_watcher/clipboard_watcher.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:win32/win32.dart';
 import 'package:window_manager/window_manager.dart';
@@ -16,9 +17,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
-  WindowOptions windowOptions = const WindowOptions(
+  final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+  final String version = packageInfo.version;
+
+  WindowOptions windowOptions = WindowOptions(
     skipTaskbar: false,
-    title: 'adb wrapper',
+    title: 'adb wrapper $version',
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
