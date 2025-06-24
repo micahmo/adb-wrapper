@@ -316,21 +316,21 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
             content: const Text('Choose audio options...'),
             actions: <Widget>[
               TextButton(
-                child: const Text('no audio'),
+                child: const Text('audio device only'),
                 onPressed: () {
                   // Don't need to change anything, default is false
                   Navigator.of(context).pop();
                 },
               ),
               TextButton(
-                child: const Text('audio'),
+                child: const Text('audio pc only'),
                 onPressed: () {
                   audio = true;
                   Navigator.of(context).pop();
                 },
               ),
               FilledButton(
-                child: const Text('audio dup'),
+                child: const Text('audio device + pc'),
                 onPressed: () {
                   audio = true;
                   audioDup = true;
@@ -638,7 +638,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                               AcknowledgedIconButton(
                                                 iconSize: 17,
                                                 icon: const Icon(Icons.headphones_rounded),
-                                                tooltip: 'scrcpy (audio)',
+                                                tooltip: 'scrcpy (audio pc only)',
                                                 onPressed: () async {
                                                   await _executeScrcpy(device: _devices[index], audio: true);
                                                 },
@@ -646,7 +646,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                               AcknowledgedIconButton(
                                                 iconSize: 17,
                                                 icon: const Icon(Icons.screen_share_outlined),
-                                                tooltip: 'scrcpy (audio dup)',
+                                                tooltip: 'scrcpy (audio device + pc)',
                                                 onPressed: () async {
                                                   await _executeScrcpy(device: _devices[index], audio: true, audioDup: true);
                                                 },
@@ -668,7 +668,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                                 itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                                                   const PopupMenuItem<String>(
                                                     value: 'noaudio',
-                                                    child: Text('scrcpy (no audio)'),
+                                                    child: Text('scrcpy (audio device only)'),
                                                   ),
                                                   const PopupMenuItem<String>(
                                                     value: 'tiktok',
