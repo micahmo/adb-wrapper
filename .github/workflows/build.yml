@@ -1,8 +1,11 @@
+name: Flutter Build
+
 concurrency:
   group: flutter-build-${{ github.ref }}
   cancel-in-progress: true
 
-name: Flutter Build
+permissions:
+  contents: write
 
 on:
   push:
@@ -35,3 +38,14 @@ jobs:
         env:
           VERSION: 1.0.${{ github.run_number }}
         run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" Setup.iss'
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: success()
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: v1.0.${{ github.run_number }}
+          files: adb-wrapper-setup-1.0.${{ github.run_number }}.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
