@@ -23,6 +23,12 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Set version in pubspec.yaml
+        run: |
+          $version = "1.0.${{ github.run_number }}"
+          (Get-Content pubspec.yaml) -replace '^version:.*', "version: $version" | Set-Content pubspec.yaml
+        shell: pwsh
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
