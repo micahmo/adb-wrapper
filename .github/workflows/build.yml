@@ -23,3 +23,11 @@ jobs:
 
       - name: Run Windows build
         run: flutter build windows
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build Installer
+        env:
+          VERSION: 1.0.${{ github.run_number }}
+        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" Setup.iss'

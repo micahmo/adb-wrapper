@@ -1,6 +1,6 @@
 #define MyAppName "adb-wrapper"
 #define MyAppExeName "adb_wrapper.exe"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion GetEnv("VERSION")
 #define MyAppPublisher "Micah Morrison"
 #define MyAppURL "https://github.com/micahmo/adb-wrapper"
 ; This is relative to SourceDir
