@@ -39,13 +39,30 @@ jobs:
           VERSION: 1.0.${{ github.run_number }}
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" Setup.iss'
 
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "No previous tag found"
+            echo "changelog=* Initial release" >> $GITHUB_OUTPUT
+          else
+            echo "Generating changelog since $PREV_TAG"
+            LOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)")
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "$LOG" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
         if: success()
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: v1.0.${{ github.run_number }}
+          body: ${{ steps.changelog.outputs.changelog }}
           files: adb-wrapper-setup-1.0.${{ github.run_number }}.exe
-          generate_release_notes: true
+          #generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
