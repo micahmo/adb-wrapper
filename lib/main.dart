@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:adb_wrapper/acknowledged_icon_button.dart';
 import 'package:adb_wrapper/adb_helper.dart';
 import 'package:adb_wrapper/config_helper.dart';
+import 'package:archive/archive.dart';
 import 'package:clipboard_watcher/clipboard_watcher.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
@@ -421,6 +422,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await checkForUpdates(context);
+
+      if (context.mounted) {
+        await checkForScrcpyUpdate(context, _scrcpyAndAdbPathController);
+      }
     });
 
     _loadConfig();
@@ -895,7 +900,7 @@ Future<void> checkForUpdates(BuildContext context) async {
             orElse: () => <String, dynamic>{},
           )['browser_download_url'] as String?;
 
-      if (_isNewerVersion(latestVersion, currentVersion) && exeUrl != null && context.mounted) {
+      if (isNewerVersion(latestVersion, currentVersion) && exeUrl != null && context.mounted) {
         final bool? shouldUpdate = await showDialog<bool>(
           context: context,
           builder: (BuildContext context) => AlertDialog(
@@ -960,8 +965,160 @@ Future<void> checkForUpdates(BuildContext context) async {
   }
 }
 
-bool _isNewerVersion(String newVersion, String currentVersion) {
+bool isNewerVersion(String newVersion, String currentVersion) {
   final Version newVer = Version.parse(newVersion);
   final Version currVer = Version.parse(currentVersion);
   return newVer > currVer;
+}
+
+String? extractScrcpyVersion(String path) {
+  final RegExp versionRegex = RegExp(r'scrcpy-win64-v(\d+\.\d+(?:\.\d+)?)');
+  final Match? match = versionRegex.firstMatch(path);
+  return match?.group(1);
+}
+
+Future<String?> fetchLatestScrcpyVersion() async {
+  final http.Response response = await http.get(Uri.parse('https://api.github.com/repos/Genymobile/scrcpy/releases/latest'));
+  if (response.statusCode == 200) {
+    final Map<String, dynamic> jsonData = json.decode(response.body);
+    return jsonData['tag_name']?.toString().replaceFirst('v', '');
+  }
+  return null;
+}
+
+bool isScrcpyUpdateAvailable(String current, String latest) {
+  final Version currentVer = Version.parse(normalizeVersion(current));
+  final Version latestVer = Version.parse(normalizeVersion(latest));
+  return latestVer > currentVer;
+}
+
+Future<void> downloadAndReplaceScrcpy({
+  required String newVersion,
+  required String currentPath,
+  required TextEditingController controller,
+}) async {
+  final Directory tempDir = await getTemporaryDirectory();
+  final String downloadUrl = 'https://github.com/Genymobile/scrcpy/releases/download/v$newVersion/scrcpy-win64-v$newVersion.zip';
+  final String zipPath = '${tempDir.path}/scrcpy-win64-v$newVersion.zip';
+  final http.Response zipResponse = await http.get(Uri.parse(downloadUrl));
+  final File zipFile = File(zipPath);
+  await zipFile.writeAsBytes(zipResponse.bodyBytes);
+
+  final Directory newExtractDir = Directory(p.join(p.dirname(currentPath), 'scrcpy-win64-v$newVersion'));
+  await newExtractDir.create(recursive: true);
+
+  final Uint8List bytes = zipFile.readAsBytesSync();
+  final Archive archive = ZipDecoder().decodeBytes(bytes);
+  final String nestedFolderPrefix = 'scrcpy-win64-v$newVersion/';
+  for (final ArchiveFile file in archive) {
+    // Remove the leading nested folder from the path
+    final String relativePath = file.name.startsWith(nestedFolderPrefix) ? file.name.substring(nestedFolderPrefix.length) : file.name;
+
+    final String outPath = p.join(newExtractDir.path, relativePath);
+    if (file.isFile) {
+      File(outPath)
+        ..createSync(recursive: true)
+        ..writeAsBytesSync(file.content as List<int>);
+    } else {
+      Directory(outPath).createSync(recursive: true);
+    }
+  }
+
+  // Update controller
+  controller.text = newExtractDir.path;
+
+  // Kill anything locking the old folder
+  killAllScrcpyAndAdb();
+
+  await Future<void>.delayed(const Duration(seconds: 2));
+
+  // Delete old directory
+  await Directory(currentPath).delete(recursive: true);
+}
+
+Future<void> checkForScrcpyUpdate(BuildContext context, TextEditingController controller) async {
+  bool? update;
+  try {
+    final String currentPath = controller.text;
+    final String? currentVersion = extractScrcpyVersion(currentPath);
+    if (currentVersion == null) return;
+
+    final String? latestVersion = await fetchLatestScrcpyVersion();
+    if (latestVersion == null || !isScrcpyUpdateAvailable(currentVersion, latestVersion)) return;
+
+    if (context.mounted) {
+      update = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: const Text('scrcpy Update Available'),
+          content: Text('scrcpy $latestVersion is available. You are using $currentVersion. Update now?'),
+          actions: <Widget>[
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Update')),
+          ],
+        ),
+      );
+
+      if (update == true && context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return const Dialog(
+              child: Padding(
+                padding: EdgeInsets.all(30.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    SizedBox(
+                      width: 25,
+                      height: 25,
+                      child: CircularProgressIndicator(),
+                    ),
+                    SizedBox(width: 25),
+                    Text("Downloading scrcpy..."),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+
+        await downloadAndReplaceScrcpy(newVersion: latestVersion, currentPath: currentPath, controller: controller);
+      }
+    }
+  } catch (e) {
+    if (context.mounted) {
+      await showDialog(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: const Text('scrcpy Update Failed'),
+          content: Text('An error occurred while updating scrcpy:\n$e'),
+          actions: <Widget>[FilledButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+        ),
+      );
+    }
+  } finally {
+    if (update == true && context.mounted) {
+      Navigator.pop(context);
+    }
+  }
+}
+
+String normalizeVersion(String version) {
+  final List<String> parts = version.split('.');
+  while (parts.length < 3) {
+    parts.add('0');
+  }
+  return parts.join('.');
+}
+
+Future<void> killAllScrcpyAndAdb() async {
+  for (final String exe in <String>['scrcpy.exe', 'adb.exe']) {
+    try {
+      await Process.run('taskkill', <String>['/F', '/IM', exe, '/T']);
+    } catch (e) {
+      // Ignore failures — the process might not be running
+    }
+  }
 }
