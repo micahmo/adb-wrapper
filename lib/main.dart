@@ -441,12 +441,14 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       _adbHelper = AdbHelper(adbPath: _scrcpyAndAdbPathController.text);
     });
     windowManager.addListener(this);
-    _loadConnectedDevices();
 
     clipboardWatcher.addListener(this);
     clipboardWatcher.start();
 
     _adbHelper = AdbHelper(adbPath: _scrcpyAndAdbPathController.text);
+
+    // Can't load devices until we have the path to adb
+    Future<void>.delayed(const Duration(seconds: 2)).then((_) => _loadConnectedDevices());
   }
 
   @override
