@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 import 'package:adb_wrapper/acknowledged_icon_button.dart';
@@ -8,8 +9,11 @@ import 'package:clipboard_watcher/clipboard_watcher.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:win32/win32.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -414,6 +418,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await checkForUpdates(context);
+    });
+
     _loadConfig();
     _ipController.addListener(() async {
       _queueConfigSave();
@@ -866,4 +875,93 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       ),
     );
   }
+}
+
+Future<void> checkForUpdates(BuildContext context) async {
+  try {
+    final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    final String currentVersion = packageInfo.version;
+
+    final Uri url = Uri.parse('https://api.github.com/repos/micahmo/adb-wrapper/releases/latest');
+    final http.Response response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> release = json.decode(response.body);
+      final String latestVersion = release['tag_name'].replaceAll('v', '');
+      final String releaseNotes = release['body'] ?? '';
+      final List<dynamic> assets = release['assets'] as List<dynamic>;
+      final String? exeUrl = assets.cast<Map<String, dynamic>>().firstWhere(
+            (Map<String, dynamic> a) => (a['name'] as String).endsWith('.exe'),
+            orElse: () => <String, dynamic>{},
+          )['browser_download_url'] as String?;
+
+      if (_isNewerVersion(latestVersion, currentVersion) && exeUrl != null && context.mounted) {
+        final bool? shouldUpdate = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+            title: const Text('Update Available'),
+            content: Text('A new version ($latestVersion) is available.\n\nChangelog:\n$releaseNotes'),
+            actions: <Widget>[
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Update')),
+            ],
+          ),
+        );
+
+        if (shouldUpdate == true && context.mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return const Dialog(
+                child: Padding(
+                  padding: EdgeInsets.all(30.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      SizedBox(
+                        width: 25,
+                        height: 25,
+                        child: CircularProgressIndicator(),
+                      ),
+                      SizedBox(width: 25),
+                      Text("Downloading..."),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+
+          final Directory tempDir = await getTemporaryDirectory();
+          final File installer = File('${tempDir.path}/adb-wrapper-setup-$latestVersion.exe');
+
+          final http.Response downloadResponse = await http.get(Uri.parse(exeUrl));
+          await installer.writeAsBytes(downloadResponse.bodyBytes);
+
+          await Process.start(installer.path, <String>[]);
+          exit(0); // Quit app so installer can proceed
+        }
+      }
+    }
+  } catch (e) {
+    if (context.mounted) {
+      await showDialog(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: const Text('Update Check Failed'),
+          content: Text('An error occurred while checking for updates:\n$e'),
+          actions: <Widget>[
+            FilledButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+          ],
+        ),
+      );
+    }
+  }
+}
+
+bool _isNewerVersion(String newVersion, String currentVersion) {
+  final Version newVer = Version.parse(newVersion);
+  final Version currVer = Version.parse(currentVersion);
+  return newVer > currVer;
 }
