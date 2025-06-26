@@ -316,21 +316,42 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
             content: const Text('Choose audio options...'),
             actions: <Widget>[
               TextButton(
-                child: const Text('audio device only'),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(Icons.phone_android_rounded),
+                    SizedBox(width: 8),
+                    Text('audio device only'),
+                  ],
+                ),
                 onPressed: () {
                   // Don't need to change anything, default is false
                   Navigator.of(context).pop();
                 },
               ),
               TextButton(
-                child: const Text('audio pc only'),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(Icons.computer_rounded),
+                    SizedBox(width: 8),
+                    Text('audio pc only'),
+                  ],
+                ),
                 onPressed: () {
                   audio = true;
                   Navigator.of(context).pop();
                 },
               ),
               FilledButton(
-                child: const Text('audio device + pc'),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(Icons.phonelink_rounded),
+                    SizedBox(width: 8),
+                    Text('audio device + pc'),
+                  ],
+                ),
                 onPressed: () {
                   audio = true;
                   audioDup = true;
@@ -639,27 +660,17 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                               ),
                                               AcknowledgedIconButton(
                                                 iconSize: 17,
-                                                icon: const Icon(Icons.headphones_rounded),
-                                                tooltip: 'scrcpy (audio pc only)',
-                                                onPressed: () async {
-                                                  await _executeScrcpy(device: _devices[index], audio: true);
-                                                },
-                                              ),
-                                              AcknowledgedIconButton(
-                                                iconSize: 17,
                                                 icon: const Icon(Icons.screen_share_outlined),
-                                                tooltip: 'scrcpy (audio device + pc)',
+                                                tooltip: 'scrcpy',
                                                 onPressed: () async {
-                                                  await _executeScrcpy(device: _devices[index], audio: true, audioDup: true);
+                                                  await _executeScrcpy(device: _devices[index], promptForAudio: true);
                                                 },
                                               ),
                                               PopupMenuButton<String>(
                                                 icon: const Icon(Icons.more_vert, size: 17),
                                                 tooltip: 'More options',
                                                 onSelected: (String value) async {
-                                                  if (value == 'noaudio') {
-                                                    await _executeScrcpy(device: _devices[index], audio: false);
-                                                  } else if (value == 'tiktok') {
+                                                  if (value == 'tiktok') {
                                                     await _executeScrcpy(device: _devices[index], app: 'com.zhiliaoapp.musically', promptForAudio: true);
                                                   } else if (value == 'plex') {
                                                     await _executeScrcpy(device: _devices[index], audio: true, app: 'com.plexapp.android', promptForAudio: true);
@@ -668,10 +679,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                                   }
                                                 },
                                                 itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                                                  const PopupMenuItem<String>(
-                                                    value: 'noaudio',
-                                                    child: Text('scrcpy (audio device only)'),
-                                                  ),
                                                   const PopupMenuItem<String>(
                                                     value: 'tiktok',
                                                     child: Text('scrcpy (tiktok)'),
