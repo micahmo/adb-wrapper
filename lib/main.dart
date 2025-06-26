@@ -442,11 +442,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await checkForUpdates(context);
-
-      if (context.mounted) {
-        await checkForScrcpyUpdate(context, _scrcpyAndAdbPathController);
-      }
+      await checkForAllUpdates(context, _scrcpyAndAdbPathController);
     });
 
     _loadConfig();
@@ -505,6 +501,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   void onWindowClose() async {
     await _saveConfig();
     await windowManager.destroy();
+  }
+
+  @override
+  void onWindowFocus() async {
+    await checkForAllUpdates(context, _scrcpyAndAdbPathController);
   }
 
   @override
@@ -889,6 +890,22 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       ),
     );
   }
+}
+
+bool checkingForUpdates = false;
+
+Future<void> checkForAllUpdates(BuildContext context, TextEditingController scrcpyAndAdbPathController) async {
+  if (checkingForUpdates) return;
+
+  checkingForUpdates = true;
+
+  await checkForUpdates(context);
+
+  if (context.mounted) {
+    await checkForScrcpyUpdate(context, scrcpyAndAdbPathController);
+  }
+
+  checkingForUpdates = false;
 }
 
 Future<void> checkForUpdates(BuildContext context) async {
