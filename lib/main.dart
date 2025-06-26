@@ -905,6 +905,7 @@ Future<void> checkForUpdates(BuildContext context) async {
       if (isNewerVersion(latestVersion, currentVersion) && exeUrl != null && context.mounted) {
         final bool? shouldUpdate = await showDialog<bool>(
           context: context,
+          barrierDismissible: false,
           builder: (BuildContext context) => AlertDialog(
             title: const Text('Update Available'),
             content: Text('A new version ($latestVersion) is available.\n\nChangelog:\n$releaseNotes'),
@@ -1051,6 +1052,7 @@ Future<void> checkForScrcpyUpdate(BuildContext context, TextEditingController co
     if (context.mounted) {
       update = await showDialog<bool>(
         context: context,
+        barrierDismissible: false,
         builder: (BuildContext context) => AlertDialog(
           title: const Text('scrcpy Update Available'),
           content: Text('scrcpy $latestVersion is available. You are using $currentVersion. Update now?'),
