@@ -52,17 +52,20 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 || echo "")
-          if [ -z "$PREV_TAG" ]; then
-            echo "No previous tag found"
-            echo "changelog=* Initial release" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changelog=Manual release" >> $GITHUB_OUTPUT
           else
-            echo "Generating changelog since $PREV_TAG"
-            LOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)")
-            echo "changelog<<EOF" >> $GITHUB_OUTPUT
-            echo "$LOG" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          fi
+            PREV_TAG=$(git describe --tags --abbrev=0 || echo "")
+            if [ -z "$PREV_TAG" ]; then
+              echo "No previous tag found"
+              echo "changelog=* Initial release" >> $GITHUB_OUTPUT
+            else
+              echo "Generating changelog since $PREV_TAG"
+              LOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)")
+              echo "changelog<<EOF" >> $GITHUB_OUTPUT
+              echo "$LOG" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            fi
         shell: bash
 
       - name: Upload to GitHub Release
