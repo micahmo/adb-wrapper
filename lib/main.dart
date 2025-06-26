@@ -509,6 +509,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   }
 
   @override
+  void onWindowRestore() async {
+    await checkForAllUpdates(context, _scrcpyAndAdbPathController);
+  }
+
+  @override
   void onClipboardChanged() async {
     ClipboardData? clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
     String? clipboardText = clipboardData?.text;
