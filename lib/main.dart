@@ -451,6 +451,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
     // Pop the loading dialog
     if (context.mounted) {
+      // ignore: use_build_context_synchronously
       Navigator.pop(context);
     }
   }
@@ -463,6 +464,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       // See if we have adb and scrcpy
       _adbPathController.text = await resolveExecutable('adb.exe') ?? 'adb.exe not found in path';
       _scrcpyPathController.text = await resolveExecutable('scrcpy.exe') ?? 'scrcpy.exe not found in path';
+
+      setState(() {});
 
       if (context.mounted) {
         // ignore: use_build_context_synchronously
