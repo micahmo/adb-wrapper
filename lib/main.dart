@@ -1042,41 +1042,41 @@ Future<void> downloadAndReplaceScrcpy({
 }) async {
   final Directory tempDir = await getTemporaryDirectory();
   final String downloadUrl = 'https://github.com/Genymobile/scrcpy/releases/download/v$newVersion/scrcpy-win64-v$newVersion.zip';
-  final String zipPath = '${tempDir.path}/scrcpy-win64-v$newVersion.zip';
+  final File zipFile = File(p.join(tempDir.path, 'scrcpy.zip'));
+
   final http.Response zipResponse = await http.get(Uri.parse(downloadUrl));
-  final File zipFile = File(zipPath);
   await zipFile.writeAsBytes(zipResponse.bodyBytes);
 
-  final Directory newExtractDir = Directory(p.join(p.dirname(currentPath), 'scrcpy-win64-v$newVersion'));
-  await newExtractDir.create(recursive: true);
+  final Directory targetDir = Directory(currentPath);
 
-  final Uint8List bytes = zipFile.readAsBytesSync();
-  final Archive archive = ZipDecoder().decodeBytes(bytes);
-  final String nestedFolderPrefix = 'scrcpy-win64-v$newVersion/';
-  for (final ArchiveFile file in archive) {
-    // Remove the leading nested folder from the path
-    final String relativePath = file.name.startsWith(nestedFolderPrefix) ? file.name.substring(nestedFolderPrefix.length) : file.name;
+  // Kill scrcpy/adb processes first
+  await killAllScrcpyAndAdb();
 
-    final String outPath = p.join(newExtractDir.path, relativePath);
-    if (file.isFile) {
-      File(outPath)
-        ..createSync(recursive: true)
-        ..writeAsBytesSync(file.content as List<int>);
-    } else {
-      Directory(outPath).createSync(recursive: true);
+  // Wait for them to die
+  await Future<void>.delayed(const Duration(seconds: 2));
+
+  // Clear out target folder
+  if (await targetDir.exists()) {
+    await for (FileSystemEntity entity in targetDir.list(recursive: false)) {
+      try {
+        await entity.delete(recursive: true);
+      } catch (_) {
+        // Optionally log or handle specific deletion failures
+      }
     }
   }
 
-  // Update controller
-  controller.text = newExtractDir.path;
+  // Extract to existing folder, flattening structure
+  final Uint8List bytes = zipFile.readAsBytesSync();
+  final Archive archive = ZipDecoder().decodeBytes(bytes);
+  for (final ArchiveFile file in archive) {
+    if (!file.isFile) continue;
 
-  // Kill anything locking the old folder
-  killAllScrcpyAndAdb();
-
-  await Future<void>.delayed(const Duration(seconds: 2));
-
-  // Delete old directory
-  await Directory(currentPath).delete(recursive: true);
+    final String fileName = p.basename(file.name); // strips folder path
+    final String outPath = p.join(targetDir.path, fileName);
+    final File outFile = File(outPath);
+    await outFile.writeAsBytes(file.content as List<int>, flush: true);
+  }
 }
 
 Future<void> checkForScrcpyUpdate(BuildContext context, TextEditingController controller) async {
