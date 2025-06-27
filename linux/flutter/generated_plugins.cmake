@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   clipboard_watcher
+  file_selector_linux
   screen_retriever
   window_manager
 )

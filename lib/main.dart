@@ -8,6 +8,7 @@ import 'package:adb_wrapper/config_helper.dart';
 import 'package:archive/archive.dart';
 import 'package:clipboard_watcher/clipboard_watcher.dart';
 import 'package:ffi/ffi.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -71,7 +72,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   final TextEditingController _portController = TextEditingController();
   final TextEditingController _pairingCodeController = TextEditingController();
   final TextEditingController _pairingPortController = TextEditingController();
-  final TextEditingController _scrcpyAndAdbPathController = TextEditingController();
+  final TextEditingController _scrcpyPathController = TextEditingController();
+  final TextEditingController _adbPathController = TextEditingController();
   final FocusNode _ipFocusNode = FocusNode();
   final FocusNode _portFocusNode = FocusNode();
   final ScrollController _scrcpyOutputVerticalScrollController = ScrollController();
@@ -97,7 +99,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       _portController.text = config['port'] ?? '';
       _pairingCodeController.text = config['pairing_code'] ?? '';
       _pairingPortController.text = config['pairing_port'] ?? '';
-      _scrcpyAndAdbPathController.text = config['scrcpy_and_adb_path'] ?? '';
 
       final double left = double.tryParse(config['window_left']) ?? 200.0;
       final double top = double.tryParse(config['window_top']) ?? 30.0;
@@ -116,7 +117,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
       'port': _portController.text,
       'pairing_code': _pairingCodeController.text,
       'pairing_port': _pairingPortController.text,
-      'scrcpy_and_adb_path': _scrcpyAndAdbPathController.text,
       'window_left': bounds.left.toString(),
       'window_top': bounds.top.toString(),
       'window_width': bounds.width.toString(),
@@ -260,7 +260,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     }
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, Future<void> Function() onSubmitted, {FocusNode? focusNode}) {
+  Widget _buildTextField(TextEditingController controller, String label, Future<void> Function() onSubmitted, {FocusNode? focusNode, bool readOnly = false, Widget? trailing}) {
     focusNode ??= FocusNode();
 
     focusNode.addListener(() {
@@ -278,29 +278,47 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
         }
         return KeyEventResult.ignored;
       },
-      child: TextField(
-        focusNode: focusNode,
-        decoration: InputDecoration(
-          isDense: true,
-          border: const OutlineInputBorder(),
-          labelText: label,
-          suffixIcon: FocusTraversalGroup(
-            descendantsAreFocusable: false,
-            child: Padding(
-              key: UniqueKey(),
-              padding: const EdgeInsets.only(right: 4.0),
-              child: IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  controller.clear();
-                  focusNode!.requestFocus();
-                },
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: TextField(
+              readOnly: readOnly,
+              style: controller.text.contains('not found')
+                  ? TextStyle(color: Colors.red.shade300, fontStyle: FontStyle.italic)
+                  : readOnly
+                      ? const TextStyle(color: Colors.grey)
+                      : null,
+              focusNode: focusNode,
+              decoration: InputDecoration(
+                isDense: true,
+                border: const OutlineInputBorder(),
+                labelText: label,
+                suffixIcon: readOnly
+                    ? null
+                    : FocusTraversalGroup(
+                        descendantsAreFocusable: false,
+                        child: Padding(
+                          key: UniqueKey(),
+                          padding: const EdgeInsets.only(right: 4.0),
+                          child: IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              controller.clear();
+                              focusNode!.requestFocus();
+                            },
+                          ),
+                        ),
+                      ),
               ),
+              controller: controller,
+              onSubmitted: (_) async => await onSubmitted(),
             ),
           ),
-        ),
-        controller: controller,
-        onSubmitted: (_) async => await onSubmitted(),
+          if (trailing != null) ...<Widget>[
+            const SizedBox(width: 10),
+            trailing,
+          ],
+        ],
       ),
     );
   }
@@ -387,7 +405,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                   child: CircularProgressIndicator(),
                 ),
                 SizedBox(width: 25),
-                Text("Launching scrcpy..."),
+                Text('Launching scrcpy...'),
               ],
             ),
           ),
@@ -402,7 +420,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
     _scrcpyOutput = '';
     final Process process = await Process.start(
-      p.join(_scrcpyAndAdbPathController.text, "scrcpy.exe"),
+      p.join(_scrcpyPathController.text, 'scrcpy.exe'),
       <String>[
         '--serial=${device['identifier']}',
         if (!audio!) '--no-audio',
@@ -442,7 +460,14 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await checkForAllUpdates(context, _scrcpyAndAdbPathController);
+      // See if we have adb and scrcpy
+      _adbPathController.text = await resolveExecutable('adb.exe') ?? 'adb.exe not found in path';
+      _scrcpyPathController.text = await resolveExecutable('scrcpy.exe') ?? 'scrcpy.exe not found in path';
+
+      if (context.mounted) {
+        // ignore: use_build_context_synchronously
+        await checkForAllUpdates(context, _scrcpyPathController.text);
+      }
     });
 
     _loadConfig();
@@ -453,16 +478,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     _portController.addListener(_queueConfigSave);
     _pairingCodeController.addListener(_queueConfigSave);
     _pairingPortController.addListener(_queueConfigSave);
-    _scrcpyAndAdbPathController.addListener(() {
-      _queueConfigSave();
-      _adbHelper = AdbHelper(adbPath: _scrcpyAndAdbPathController.text);
-    });
     windowManager.addListener(this);
 
     clipboardWatcher.addListener(this);
     clipboardWatcher.start();
 
-    _adbHelper = AdbHelper(adbPath: _scrcpyAndAdbPathController.text);
+    _adbHelper = AdbHelper(adbPath: _adbPathController.text);
 
     // Can't load devices until we have the path to adb
     Future<void>.delayed(const Duration(seconds: 2)).then((_) => _loadConnectedDevices());
@@ -476,7 +497,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     _portController.dispose();
     _pairingCodeController.dispose();
     _pairingPortController.dispose();
-    _scrcpyAndAdbPathController.dispose();
     windowManager.removeListener(this);
 
     clipboardWatcher.removeListener(this);
@@ -505,12 +525,12 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
   @override
   void onWindowFocus() async {
-    await checkForAllUpdates(context, _scrcpyAndAdbPathController);
+    await checkForAllUpdates(context, _scrcpyPathController.text);
   }
 
   @override
   void onWindowRestore() async {
-    await checkForAllUpdates(context, _scrcpyAndAdbPathController);
+    await checkForAllUpdates(context, _scrcpyPathController.text);
   }
 
   @override
@@ -766,7 +786,98 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 25),
-                _buildTextField(_scrcpyAndAdbPathController, 'scrcpy and adb Path', () async {}),
+                _buildTextField(
+                  _scrcpyPathController,
+                  'scrcpy Path',
+                  () async {},
+                  readOnly: true,
+                  trailing: _scrcpyPathController.text.contains('not found')
+                      ? IconButton(
+                          onPressed: () async {
+                            final String? selectedDirectory = await getDirectoryPath();
+
+                            if (selectedDirectory?.isNotEmpty == true && context.mounted) {
+                              // Check if the directory is empty. If not, warn the user that all files will be deleted
+                              final Directory dir = Directory(selectedDirectory!);
+                              if (dir.existsSync() && dir.listSync().isNotEmpty) {
+                                final bool? confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: const Text('Warning'),
+                                      content: Text('The selected directory \'${dir.path}\' is not empty. All files will be deleted. Are you sure you want to proceed?'),
+                                      actions: <Widget>[
+                                        TextButton(
+                                          onPressed: () => Navigator.of(context).pop(false),
+                                          child: const Text('No'),
+                                        ),
+                                        FilledButton(
+                                          onPressed: () => Navigator.of(context).pop(true),
+                                          child: const Text('Yes'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+
+                                if (confirm != true) {
+                                  return;
+                                }
+                              }
+
+                              if (context.mounted) {
+                                await checkForScrcpyUpdate(context, selectedDirectory, force: true);
+
+                                if (dir.listSync().isNotEmpty) {
+                                  // Don't await it, so we can proceed with the work below.
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (BuildContext context) {
+                                      return const Dialog(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(30.0),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: <Widget>[
+                                              SizedBox(
+                                                width: 25,
+                                                height: 25,
+                                                child: CircularProgressIndicator(),
+                                              ),
+                                              SizedBox(width: 25),
+                                              Text('Updating environment variables...'),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+
+                                  // Add to path
+                                  await addPathToUserEnv(selectedDirectory);
+
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                  }
+
+                                  // After updating, re-check the paths
+                                  _adbPathController.text = _adbPathController.text.contains('not found') ? dir.path : _adbPathController.text;
+                                  _scrcpyPathController.text = dir.path;
+                                  _adbHelper = AdbHelper(adbPath: _adbPathController.text);
+
+                                  setState(() {});
+                                }
+                              }
+                            }
+                          },
+                          tooltip: 'Download scrcpy',
+                          icon: const Icon(Icons.download_rounded),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 25),
+                _buildTextField(_adbPathController, 'adb Path', () async {}, readOnly: true),
                 const SizedBox(height: 25),
                 Row(
                   children: <Widget>[
@@ -899,7 +1010,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
 bool checkingForUpdates = false;
 
-Future<void> checkForAllUpdates(BuildContext context, TextEditingController scrcpyAndAdbPathController) async {
+Future<void> checkForAllUpdates(BuildContext context, String scrcpyPath) async {
   if (checkingForUpdates) return;
 
   checkingForUpdates = true;
@@ -907,7 +1018,7 @@ Future<void> checkForAllUpdates(BuildContext context, TextEditingController scrc
   await checkForUpdates(context);
 
   if (context.mounted) {
-    await checkForScrcpyUpdate(context, scrcpyAndAdbPathController);
+    await checkForScrcpyUpdate(context, scrcpyPath);
   }
 
   checkingForUpdates = false;
@@ -962,7 +1073,7 @@ Future<void> checkForUpdates(BuildContext context) async {
                         child: CircularProgressIndicator(),
                       ),
                       SizedBox(width: 25),
-                      Text("Downloading..."),
+                      Text('Downloading...'),
                     ],
                   ),
                 ),
@@ -1005,7 +1116,7 @@ bool isNewerVersion(String newVersion, String currentVersion) {
 
 String? extractScrcpyVersion(String scrcpyPath) {
   try {
-    final ProcessResult result = Process.runSync(p.join(scrcpyPath, "scrcpy.exe"), <String>['--version']);
+    final ProcessResult result = Process.runSync(p.join(scrcpyPath, 'scrcpy.exe'), <String>['--version']);
 
     if (result.exitCode == 0) {
       final String output = result.stdout.toString();
@@ -1035,11 +1146,7 @@ bool isScrcpyUpdateAvailable(String current, String latest) {
   return latestVer > currentVer;
 }
 
-Future<void> downloadAndReplaceScrcpy({
-  required String newVersion,
-  required String currentPath,
-  required TextEditingController controller,
-}) async {
+Future<void> downloadAndReplaceScrcpy({required String newVersion, required String scrcpyPath}) async {
   final Directory tempDir = await getTemporaryDirectory();
   final String downloadUrl = 'https://github.com/Genymobile/scrcpy/releases/download/v$newVersion/scrcpy-win64-v$newVersion.zip';
   final File zipFile = File(p.join(tempDir.path, 'scrcpy.zip'));
@@ -1047,7 +1154,7 @@ Future<void> downloadAndReplaceScrcpy({
   final http.Response zipResponse = await http.get(Uri.parse(downloadUrl));
   await zipFile.writeAsBytes(zipResponse.bodyBytes);
 
-  final Directory targetDir = Directory(currentPath);
+  final Directory targetDir = Directory(scrcpyPath);
 
   // Kill scrcpy/adb processes first
   await killAllScrcpyAndAdb();
@@ -1079,57 +1186,62 @@ Future<void> downloadAndReplaceScrcpy({
   }
 }
 
-Future<void> checkForScrcpyUpdate(BuildContext context, TextEditingController controller) async {
+Future<void> checkForScrcpyUpdate(BuildContext context, String scrcpyPath, {bool force = false}) async {
   bool? update;
+
   try {
-    final String currentPath = controller.text;
-    final String? currentVersion = extractScrcpyVersion(currentPath);
-    if (currentVersion == null) return;
-
     final String? latestVersion = await fetchLatestScrcpyVersion();
-    if (latestVersion == null || !isScrcpyUpdateAvailable(currentVersion, latestVersion)) return;
 
-    if (context.mounted) {
-      update = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) => AlertDialog(
-          title: const Text('scrcpy Update Available'),
-          content: Text('scrcpy $latestVersion is available. You are using $currentVersion. Update now?'),
-          actions: <Widget>[
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Update')),
-          ],
-        ),
-      );
+    if (!force) {
+      final String? currentVersion = extractScrcpyVersion(scrcpyPath);
+      if (currentVersion == null) return;
 
-      if (update == true && context.mounted) {
-        showDialog(
+      if (latestVersion == null || !isScrcpyUpdateAvailable(currentVersion, latestVersion)) return;
+
+      if (context.mounted) {
+        update = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
-          builder: (BuildContext context) {
-            return const Dialog(
-              child: Padding(
-                padding: EdgeInsets.all(30.0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    SizedBox(
-                      width: 25,
-                      height: 25,
-                      child: CircularProgressIndicator(),
-                    ),
-                    SizedBox(width: 25),
-                    Text("Downloading scrcpy..."),
-                  ],
-                ),
-              ),
-            );
-          },
+          builder: (BuildContext context) => AlertDialog(
+            title: const Text('scrcpy Update Available'),
+            content: Text('scrcpy $latestVersion is available. You are using $currentVersion. Update now?'),
+            actions: <Widget>[
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Update')),
+            ],
+          ),
         );
-
-        await downloadAndReplaceScrcpy(newVersion: latestVersion, currentPath: currentPath, controller: controller);
       }
+    }
+
+    if (force || update == true && latestVersion?.isNotEmpty == true && context.mounted) {
+      // DO NOT AWAIT THIS
+      showDialog(
+        // ignore: use_build_context_synchronously
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Dialog(
+            child: Padding(
+              padding: EdgeInsets.all(30.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  SizedBox(
+                    width: 25,
+                    height: 25,
+                    child: CircularProgressIndicator(),
+                  ),
+                  SizedBox(width: 25),
+                  Text('Downloading scrcpy...'),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      await downloadAndReplaceScrcpy(newVersion: latestVersion!, scrcpyPath: scrcpyPath);
     }
   } catch (e) {
     if (context.mounted) {
@@ -1143,7 +1255,8 @@ Future<void> checkForScrcpyUpdate(BuildContext context, TextEditingController co
       );
     }
   } finally {
-    if (update == true && context.mounted) {
+    if (force || update == true && context.mounted) {
+      // ignore: use_build_context_synchronously
       Navigator.pop(context);
     }
   }
@@ -1165,4 +1278,50 @@ Future<void> killAllScrcpyAndAdb() async {
       // Ignore failures — the process might not be running
     }
   }
+}
+
+Future<String?> resolveExecutable(String executable) async {
+  try {
+    final ProcessResult result = await Process.run('where', <String>[executable]);
+    if (result.exitCode == 0) {
+      final List<String> lines = result.stdout.toString().trim().split('\n');
+      if (lines.isNotEmpty) {
+        final String fullPath = lines.first.trim();
+        return p.dirname(fullPath);
+      }
+    }
+  } catch (_) {
+    // Ignore errors
+  }
+  return null;
+}
+
+Future<void> addPathToUserEnv(String newPath) async {
+  // Check if it's already in the PATH
+  ProcessResult result = await Process.run(
+    'powershell',
+    <String>[
+      '-Command',
+      r'[Environment]::GetEnvironmentVariable("PATH", "User")',
+    ],
+  );
+
+  if (result.exitCode != 0) {
+    return;
+  }
+
+  String currentPath = result.stdout.trim();
+  if (currentPath.toLowerCase().contains(newPath.toLowerCase())) {
+    return;
+  }
+
+  String updatedPath = currentPath.endsWith(';') ? '$currentPath$newPath' : '$currentPath;$newPath';
+
+  await Process.run(
+    'powershell',
+    <String>[
+      '-Command',
+      '[Environment]::SetEnvironmentVariable("PATH", "${updatedPath.replaceAll('"', '""')}", "User")',
+    ],
+  );
 }
