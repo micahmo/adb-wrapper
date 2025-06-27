@@ -1003,10 +1003,21 @@ bool isNewerVersion(String newVersion, String currentVersion) {
   return newVer > currVer;
 }
 
-String? extractScrcpyVersion(String path) {
-  final RegExp versionRegex = RegExp(r'scrcpy-win64-v(\d+\.\d+(?:\.\d+)?)');
-  final Match? match = versionRegex.firstMatch(path);
-  return match?.group(1);
+String? extractScrcpyVersion(String scrcpyPath) {
+  try {
+    final ProcessResult result = Process.runSync(p.join(scrcpyPath, "scrcpy.exe"), <String>['--version']);
+
+    if (result.exitCode == 0) {
+      final String output = result.stdout.toString();
+      final RegExp versionRegex = RegExp(r'scrcpy (\d+\.\d+(\.\d+)?)');
+      final Match? match = versionRegex.firstMatch(output);
+      return match?.group(1);
+    }
+  } catch (_) {
+    // Ignore
+  }
+
+  return null;
 }
 
 Future<String?> fetchLatestScrcpyVersion() async {
