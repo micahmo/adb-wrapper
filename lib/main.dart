@@ -9,6 +9,7 @@ import 'package:archive/archive.dart';
 import 'package:clipboard_watcher/clipboard_watcher.dart';
 import 'package:ffi/ffi.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -1017,6 +1018,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 bool checkingForUpdates = false;
 
 Future<void> checkForAllUpdates(BuildContext context, String scrcpyPath) async {
+  if (kDebugMode) return;
+
   if (checkingForUpdates) return;
 
   checkingForUpdates = true;
