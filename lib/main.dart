@@ -870,6 +870,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                                   _adbHelper = AdbHelper(adbPath: _adbPathController.text);
 
                                   setState(() {});
+
+                                  // Finally, reload devices
+                                  Future<void>.delayed(const Duration(seconds: 2)).then((_) => _loadConnectedDevices());
                                 }
                               }
                             }
