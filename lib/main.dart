@@ -325,8 +325,11 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   }
 
   Future<void> _executeScrcpy({required Map<String, String> device, bool? audio, bool? audioDup, String? app, bool? window, bool? promptForAudio}) async {
+    bool result = true;
+
     // Prompt, if specified
     if (promptForAudio == true) {
+      result = false;
       await showDialog<bool>(
         context: context,
         builder: (BuildContext context) {
@@ -345,6 +348,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                 ),
                 onPressed: () {
                   // Don't need to change anything, default is false
+                  result = true;
                   Navigator.of(context).pop();
                 },
               ),
@@ -359,6 +363,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                 ),
                 onPressed: () {
                   audio = true;
+                  result = true;
                   Navigator.of(context).pop();
                 },
               ),
@@ -374,6 +379,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
                 onPressed: () {
                   audio = true;
                   audioDup = true;
+                  result = true;
                   Navigator.of(context).pop();
                 },
               ),
@@ -381,6 +387,10 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
           );
         },
       );
+    }
+
+    if (!result) {
+      return;
     }
 
     // If the user still didn't specify...
