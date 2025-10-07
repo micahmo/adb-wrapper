@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:math';
 import 'package:adb_wrapper/acknowledged_icon_button.dart';
 import 'package:adb_wrapper/adb_helper.dart';
 import 'package:adb_wrapper/config_helper.dart';
@@ -549,8 +550,7 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
   @override
   void onClipboardChanged() async {
-    ClipboardData? clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-    String? clipboardText = clipboardData?.text;
+    String? clipboardText = await getClipboardTextWithRetry();
 
     List<String>? parts = clipboardText?.split(':');
     if (parts?.length == 2) {
@@ -1343,4 +1343,47 @@ Future<void> addPathToUserEnv(String newPath) async {
       '[Environment]::SetEnvironmentVariable("PATH", "${updatedPath.replaceAll('"', '""')}", "User")',
     ],
   );
+}
+
+/// Reads plain-text clipboard with retries.
+/// - Retries on transient PlatformException like "Unable to open clipboard".
+/// - Returns null if nothing is available or retries exhausted.
+Future<String?> getClipboardTextWithRetry({
+  int maxAttempts = 5,
+  Duration initialDelay = const Duration(milliseconds: 40),
+}) async {
+  int attempt = 0;
+  Duration delay = initialDelay;
+  final Random rng = Random();
+
+  while (true) {
+    try {
+      final ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
+      return data?.text;
+    } on PlatformException catch (e) {
+      // Windows/desktop often throws: "Unable to open clipboard".
+      // Only retry for transient open/lock failures.
+      final String msg = (e.message ?? '').toLowerCase();
+      final bool looksTransient = msg.contains('unable to open clipboard') || msg.contains('clipboard');
+
+      attempt++;
+      if (!looksTransient || attempt >= maxAttempts) {
+        // Give up for non-transient errors or after max attempts.
+        return null;
+      } else {
+        debugPrint('Clipboard read failed (attempt $attempt): $e');
+      }
+
+      // Jittered backoff: delay * 2 each time, with ±20% jitter.
+      final double jitter = 0.8 + (rng.nextDouble() * 0.4);
+      await Future<dynamic>.delayed(Duration(
+        microseconds: (delay.inMicroseconds * jitter).round(),
+      ));
+      delay *= 2;
+      continue;
+    } catch (_) {
+      // Unknown error: don't spin forever.
+      return null;
+    }
+  }
 }
