@@ -92,6 +92,9 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
   String _scrcpyOutput = '';
   String _adbOutput = '';
 
+  String? _lastHandledClipboard;
+  bool _isPromptOpen = false;
+
   BuildContext? dialogContext;
 
   void _loadConfig() async {
@@ -483,6 +486,13 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
         // ignore: use_build_context_synchronously
         await checkForAllUpdates(context, _scrcpyPathController.text);
       }
+
+      final String? startupClipboard = await getClipboardTextWithRetry();
+      await _maybePromptFromClipboardText(startupClipboard);
+
+      // Now start the watcher so we don’t double-prompt
+      clipboardWatcher.addListener(this);
+      clipboardWatcher.start();
     });
 
     _loadConfig();
@@ -494,9 +504,6 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
     _pairingCodeController.addListener(_queueConfigSave);
     _pairingPortController.addListener(_queueConfigSave);
     windowManager.addListener(this);
-
-    clipboardWatcher.addListener(this);
-    clipboardWatcher.start();
 
     _adbHelper = AdbHelper(adbPath: _adbPathController.text);
 
@@ -550,63 +557,8 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
 
   @override
   void onClipboardChanged() async {
-    String? clipboardText = await getClipboardTextWithRetry();
-
-    List<String>? parts = clipboardText?.split(':');
-    if (parts?.length == 2) {
-      String ip = parts![0];
-      String port = parts[1];
-
-      if (ip.isNotEmpty && port.isNotEmpty) {
-        try {
-          InternetAddress(ip);
-          int.parse(port);
-
-          // If we get here, we parsed successfully. Ask the user if they want to use it.
-          if (context.mounted) {
-            if (dialogContext != null) {
-              Navigator.of(dialogContext!).pop();
-              dialogContext = null;
-            }
-
-            await showDialog(
-              // ignore: use_build_context_synchronously
-              context: context,
-              builder: (BuildContext context) {
-                dialogContext = context;
-                return AlertDialog(
-                  title: const Text('Detected Copied IP:Port'),
-                  content: Text('The following was detected: $ip:$port. Would you like to use this?'),
-                  actions: <Widget>[
-                    TextButton(
-                      child: const Text('No'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    FilledButton(
-                      child: const Text('Yes'),
-                      onPressed: () async {
-                        Navigator.of(context).pop();
-
-                        setState(() {
-                          _ipController.text = ip;
-                          _portController.text = port;
-                        });
-
-                        await _connectDevice();
-                      },
-                    ),
-                  ],
-                );
-              },
-            );
-
-            dialogContext = null;
-          }
-        } catch (e) {
-          // We couldn't parse the IP address or port. Ignore
-        }
-      }
-    }
+    final String? clipboardText = await getClipboardTextWithRetry();
+    await _maybePromptFromClipboardText(clipboardText);
   }
 
   @override
@@ -1022,6 +974,62 @@ class _MyHomePageState extends State<MyHomePage> with WindowListener, ClipboardL
         ),
       ),
     );
+  }
+
+  Future<void> _maybePromptFromClipboardText(String? clipboardText) async {
+    if (clipboardText == null) return;
+
+    final String text = clipboardText.trim();
+    if (text.isEmpty) return;
+    if (text == _lastHandledClipboard) return; // de-dupe
+
+    final List<String> parts = text.split(':');
+    if (parts.length != 2) return;
+
+    final String ip = parts[0].trim();
+    final String portStr = parts[1].trim();
+    if (ip.isEmpty || portStr.isEmpty) return;
+
+    // Validate IPv4 only (matches your current behavior) and numeric port
+    final InternetAddress? parsed = InternetAddress.tryParse(ip);
+    final int? port = int.tryParse(portStr);
+    if (parsed == null || parsed.type != InternetAddressType.IPv4 || port == null) return;
+
+    if (!mounted || _isPromptOpen) return;
+
+    _isPromptOpen = true;
+    _lastHandledClipboard = text;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        dialogContext = context;
+        return AlertDialog(
+          title: const Text('Detected Copied IP:Port'),
+          content: Text('The following was detected: $ip:$portStr. Would you like to use this?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('No'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            FilledButton(
+              child: const Text('Yes'),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                setState(() {
+                  _ipController.text = ip;
+                  _portController.text = portStr;
+                });
+                await _connectDevice();
+              },
+            ),
+          ],
+        );
+      },
+    ).whenComplete(() {
+      dialogContext = null;
+      _isPromptOpen = false;
+    });
   }
 }
 
